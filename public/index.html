@@ -65,6 +65,28 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .truck{display:flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 5px;border-radius:14px;background:var(--acc);color:var(--on-acc);font:600 12px system-ui;border:2px solid #fff;box-shadow:0 1px 4px #0006;cursor:pointer}
 .truck.old{background:var(--old);color:#fff}
 .me{width:16px;height:16px;border-radius:50%;background:#2a7fff;border:3px solid #fff;box-shadow:0 0 0 2px #2a7fff66}
+/* Ficha para reportar por GuaZap */
+.near-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.near-head b{margin-right:auto}
+.near-head button{padding:3px 10px;font-size:13px}
+.report-btn{background:var(--warn);border-color:var(--warn);color:#fff;font-weight:600}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .report-btn{color:#1b1f24}}
+:root[data-theme="dark"] .report-btn{color:#1b1f24}
+.r-nopin{padding:8px 10px;border-radius:8px;border:1px dashed var(--line);margin:10px 0}
+.r-nopin button{margin-top:6px;font-size:13px;padding:4px 10px}
+#report{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:14px 16px;border:0;border-radius:12px;background:var(--card);color:var(--fg);box-shadow:0 4px 24px #0006,0 0 0 1px var(--line)}
+#report::backdrop{background:#0007}
+#report h2{font-size:16px;margin:0}
+#report p{margin:6px 0}
+#report label{display:block;margin:10px 0 4px;font-weight:600;font-size:14px}
+#report select,#report input{font:inherit;width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+#report ol{margin:6px 0;padding-left:22px}
+#report li{margin:6px 0}
+#report code{font:600 14px ui-monospace,monospace;padding:1px 6px;border-radius:6px;background:var(--bg);border:1px solid var(--line)}
+.copy{padding:1px 8px;font-size:12px;margin-left:4px;vertical-align:1px}
+.r-loc{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.r-loc button{font-size:13px;padding:4px 10px}
+.r-go{display:block;text-align:center;margin:12px 0 4px;padding:9px 12px;border-radius:8px;background:var(--acc);color:var(--on-acc);text-decoration:none;font-weight:600}
 .maplibregl-popup-content{background:var(--card);color:var(--fg);font-size:14px}
 .maplibregl-popup-tip{border-top-color:var(--card)!important;border-bottom-color:var(--card)!important}
 .maplibregl-popup-close-button{color:var(--fg)}
@@ -82,9 +104,29 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   <span class="pill"><b id="count">0</b> en el mapa</span>
   <button id="btnNear">Cerca de mí</button>
   <button id="btnPick" class="sec">Elegir punto</button>
+  <button id="btnReportTop" class="report-btn" title="Reportar por WhatsApp (GuaZap) que el camión no pasó u otra falla">⚠ ¿No pasó el camión? Repórtalo</button>
 </header>
 <div id="map"></div>
 <div id="near"></div>
+<!-- Ficha para reportar fallas de recolección por GuaZap (WhatsApp del Ayuntamiento). -->
+<dialog id="report" aria-labelledby="reportTitle">
+  <div class="card-head">
+    <h2 id="reportTitle">Reportar recolección por GuaZap</h2>
+    <button type="button" class="card-x" id="reportClose" aria-label="Cerrar">✕</button>
+  </div>
+  <p class="hint">GuaZap es el WhatsApp de reportes de Guadalajara y Zapopan. Funciona con menús: aquí te dejamos listas las respuestas para que solo las copies.</p>
+  <label for="rMun">Municipio</label>
+  <select id="rMun"></select>
+  <label for="rKind">¿Qué pasó?</label>
+  <select id="rKind"></select>
+  <div id="rDaysBox"><label for="rDays">¿Cuántos días lleva sin pasar?</label><input id="rDays" type="number" min="1" max="60" inputmode="numeric" value="2"></div>
+  <label>Pasos en GuaZap</label>
+  <ol id="rSteps"></ol>
+  <div id="rLocBox"><label>Si te pide la ubicación</label><div class="r-loc" id="rLoc"></div></div>
+  <div id="rNoPin" class="r-nopin">Marca en el mapa dónde no pasó el camión para tener la ubicación lista para copiar.<br><button type="button" class="sec" id="rPick">Elegir punto en el mapa</button></div>
+  <a class="r-go" id="rGo" target="_blank" rel="noopener">Abrir GuaZap en WhatsApp ↗</a>
+  <p class="hint">Este mapa no es oficial: solo abre WhatsApp. El reporte lo envías tú y nada sale de este navegador hasta que lo mandes. Al terminar, GuaZap te da un folio para darle seguimiento.</p>
+</dialog>
 <!-- Info flotante sobre el mapa (abajo a la izquierda). Solo se abre al tocarla. -->
 <div id="infoCtl" class="info-ctl maplibregl-ctrl">
   <div id="aboutCard" class="about-card" role="dialog" aria-labelledby="aboutTitle" hidden>
@@ -94,6 +136,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
     </div>
     <p>Mapa en vivo, <strong>no oficial</strong>, de los camiones de basura de Guadalajara. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso.</p>
     <p>Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado.</p>
+    <p>¿No pasó el camión o hubo un problema? Usa <strong>«Repórtalo»</strong> (arriba) para enviarlo por GuaZap, el WhatsApp de reportes del Ayuntamiento.</p>
     <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso <span class="hint">(ahorra datos y no carga al servidor de origen)</span></label>
     <p class="card-links"><a href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener" class="gh-link"><svg class="gh" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg>Ver en GitHub ↗</a> · <a href="https://github.com/tocaltepetl/camiones-basura-gdl/issues/new/choose" target="_blank" rel="noopener">Reportar un problema</a> ·
       <a class="ver" href="https://github.com/tocaltepetl/camiones-basura-gdl/releases" target="_blank" rel="noopener">dev</a></p> <!-- version: se reemplaza al desplegar -->
@@ -242,6 +285,7 @@ function updateCount() {
 let me = null;                      // punto de referencia actual [lng, lat]
 let refKind = null;                 // "me" | "pin"
 let meMarker = null, pinMarker = null, picking = false;
+let reopenAfterPick = false;        // al elegir punto desde la ficha de reporte, se vuelve a abrir con la ubicación
 function dist(a, b) { // haversine, metros; a y b en [lng, lat]
   const R = EARTH_RADIUS_M, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
   const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2;
@@ -256,7 +300,7 @@ function setPicking(on) {
   if (on) { nearBox.style.display = "block"; nearBox.textContent = "Toca el mapa para elegir un punto."; }
 }
 document.getElementById("btnNear").onclick = () => {
-  setPicking(false);
+  setPicking(false); reopenAfterPick = false;
   nearBox.style.display = "block";
   if (!("geolocation" in navigator)) { nearBox.textContent = "Tu navegador no permite geolocalización."; return; }
   nearBox.textContent = "Buscando tu ubicación…";
@@ -267,7 +311,7 @@ document.getElementById("btnNear").onclick = () => {
     setRef(pos, "me", true);
   }, e => { nearBox.textContent = "No se pudo obtener tu ubicación (" + e.message + ")."; }, {enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: GEO_MAX_AGE_MS});
 };
-document.getElementById("btnPick").onclick = () => setPicking(!picking);
+document.getElementById("btnPick").onclick = () => { if (picking) reopenAfterPick = false; setPicking(!picking); };
 map.on("click", e => {
   if (!picking) return;
   setPicking(false);
@@ -277,6 +321,7 @@ map.on("click", e => {
     pinMarker.on("dragend", () => { const l = pinMarker.getLngLat(); setRef([l.lng, l.lat], "pin", false); });
   } else pinMarker.setLngLat(pos);
   setRef(pos, "pin", false);
+  if (reopenAfterPick) { reopenAfterPick = false; openReport(nearestLive()); }
 });
 function setRef(pos, kind, fit) { me = pos; refKind = kind; renderNear(fit); }
 function clearRef() {
@@ -288,12 +333,13 @@ function renderNear(fit) {
   const list = [...trucks.values()].map(t => ({t, d: dist(me, t.pos)})).sort((a, b) => a.d - b.d).slice(0, NEAR_LIST_SIZE);
   const title = refKind === "me" ? "Camiones más cercanos a ti" : "Camiones más cercanos al punto (arrástralo para moverlo)";
   nearBox.style.display = "block";
-  nearBox.innerHTML = `<b>${title}</b> <button class="sec" id="closeNear" style="float:right;padding:2px 8px" aria-label="Cerrar">✕</button>` +
+  nearBox.innerHTML = `<div class="near-head"><b>${title}</b><button class="report-btn" id="btnReport">⚠ ¿No pasó? Repórtalo</button><button class="sec" id="closeNear" aria-label="Cerrar">✕</button></div>` +
     (list.length ? "<ol>" + list.map((x, i) => `<li data-i="${i}">Ruta ${esc(x.t.route)} · ${fmtDist(x.d)} · ${hhmm(x.t.last)}${x.t.old ? " (sin señal)" : ""}</li>`).join("") + "</ol>" : "<p>Aún no hay camiones recibidos.</p>");
   nearBox.querySelectorAll("li").forEach(li => li.onclick = () => {
     const t = list[+li.dataset.i].t; map.flyTo({center: t.pos, zoom: FOCUS_ZOOM}); if (!t.popup.isOpen()) t.marker.togglePopup();
   });
   document.getElementById("closeNear").onclick = clearRef;
+  document.getElementById("btnReport").onclick = () => openReport(nearestLive());
   if (fit) {
     const b = new maplibregl.LngLatBounds(me, me);
     list.slice(0, NEAR_FIT_COUNT).forEach(x => b.extend(x.t.pos));
@@ -301,6 +347,90 @@ function renderNear(fit) {
   }
 }
 setInterval(() => { if (me && nearBox.style.display !== "none" && !picking) renderNear(false); }, NEAR_REFRESH_MS);
+
+// ---------- reportar por GuaZap ----------
+// GuaZap (bot «CHATo») es un menú por texto: no acepta un reporte armado en un
+// solo mensaje, así que guiamos los pasos y dejamos listas las respuestas.
+// Flujo verificado en Guadalajara el 2026-11-12 (ver issue #11).
+const GUAZAP_PHONE = "523336101010";       // un solo número; el bot pregunta el municipio
+const GUAZAP_MUNIS = ["Guadalajara", "Zapopan", "Otro Mpio de ZMG"];   // como en la lista del bot
+const GUAZAP_KINDS = [                     // menú «Recolección de basura»; el índice + 1 es lo que se escribe
+  "Camión recolector no ha pasado en días",
+  "Camión no recorre toda la calle",
+  "Derrames al compactar la basura",
+  "La unidad pasa muy rápido",
+  "Personal condiciona el servicio (pide dinero, limita la cantidad o el tipo de basura)",
+  "Personal grosero",
+  "Personal no campanea",
+  "Recolección inconclusa",
+];
+const report = document.getElementById("report");
+const rMun = document.getElementById("rMun"), rKind = document.getElementById("rKind"), rDays = document.getElementById("rDays");
+rMun.innerHTML = GUAZAP_MUNIS.map(m => `<option>${esc(m)}</option>`).join("");
+rKind.innerHTML = GUAZAP_KINDS.map((k, i) => `<option value="${i + 1}">${esc(k)}</option>`).join("");
+document.getElementById("rGo").href = `https://wa.me/${GUAZAP_PHONE}?text=Hola`;
+let reportTruck = null;
+const code = s => `<code>${esc(s)}</code><button type="button" class="sec copy" data-copy="${esc(s)}">Copiar</button>`;
+async function copyText(text, btn) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {   // file:// o permisos: copia con una selección temporal
+    const ta = Object.assign(document.createElement("textarea"), {value: text});
+    report.append(ta); ta.select(); document.execCommand("copy"); ta.remove();
+  }
+  const prev = btn.textContent; btn.textContent = "Copiado ✓"; setTimeout(() => btn.textContent = prev, 1500);
+}
+function renderReport() {
+  const kind = +rKind.value, gdl = rMun.value === "Guadalajara";
+  const days = String(Math.max(1, Math.round(+rDays.value) || 1));
+  document.getElementById("rDaysBox").hidden = kind !== 1;
+  const route = reportTruck ? ` (el más cercano es de la ruta ${esc(reportTruck.route)})` : "";
+  const steps = [
+    `Escribe ${code("Hola")} y envíalo (ya va escrito al abrir el chat).`,
+    `En «¿Con qué municipio…?» toca <b>Seleccionar</b> y elige <b>${esc(rMun.value)}</b>.`,
+  ];
+  if (gdl) {
+    steps.push(
+      `${code("1")} Reporte de servicios municipales`,
+      `${code("3")} Sistema de recolección de basura`,
+      `${code(String(kind))} ${esc(GUAZAP_KINDS[kind - 1])}`,
+      `Número del camión: el que trae pintado; si no lo viste, ${code("No")}${route}.`,
+    );
+    if (kind === 1) steps.push(`Días sin pasar: ${code(days)}`);
+  } else {
+    steps.push(`Elige el reporte de servicios municipales y luego recolección de basura. <span class="hint">Solo probamos los menús de Guadalajara; en ${esc(rMun.value)} pueden cambiar.</span>`,
+      `Tipo de problema: <b>${esc(GUAZAP_KINDS[kind - 1])}</b>.`);
+    if (kind === 1) steps.push(`Si te pregunta los días sin pasar: ${code(days)}`);
+  }
+  steps.push("Sigue las preguntas del bot y guarda el folio que te dé al final.");
+  document.getElementById("rSteps").innerHTML = steps.map(s => `<li>${s}</li>`).join("");
+  const locBox = document.getElementById("rLocBox");
+  locBox.hidden = !me;
+  document.getElementById("rNoPin").hidden = !!me;
+  if (me) {
+    const ll = `${me[1].toFixed(6)}, ${me[0].toFixed(6)}`;
+    document.getElementById("rLoc").innerHTML =
+      `<button type="button" class="sec" data-copy="${ll}">Copiar coordenadas</button>` +
+      `<button type="button" class="sec" data-copy="https://www.google.com/maps?q=${me[1].toFixed(6)},${me[0].toFixed(6)}">Copiar enlace de mapa</button>`;
+  }
+}
+function openReport(truck) { reportTruck = truck || null; renderReport(); report.showModal(); }
+report.addEventListener("click", e => {
+  const b = e.target.closest("[data-copy]"); if (b) copyText(b.dataset.copy, b);
+  else if (e.target === report) {   // el fondo también cuenta como el <dialog>: revisa que el clic quede fuera
+    const r = report.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) report.close();
+  }
+});
+for (const el of [rMun, rKind, rDays]) el.addEventListener("input", renderReport);
+document.getElementById("reportClose").onclick = () => report.close();
+document.getElementById("btnReportTop").onclick = () => openReport(nearestLive());
+document.getElementById("rPick").onclick = () => { report.close(); setPicking(true); reopenAfterPick = true; };
+function nearestLive() {
+  if (!me) return null;
+  let best = null, bd = Infinity;
+  for (const t of trucks.values()) if (!t.old) { const d = dist(me, t.pos); if (d < bd) { bd = d; best = t; } }
+  return best;
+}
 
 // ---------- áreas de ruta (para suscribirse solo a lo visible) ----------
 // Cada canal es una ruta que recorre siempre la misma zona. Guardamos el
