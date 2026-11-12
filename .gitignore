@@ -3,6 +3,8 @@
 !.git/
 !.github/
 *.png
+!assets/brand/*.png
+!public/*.png
 
 # Herramientas
 node_modules/
