@@ -5,10 +5,16 @@ aporte es bienvenido: reportar errores, proponer ideas, mejorar el diseño o el
 código, o corregir la documentación.
 
 ## Correr el proyecto
-No hay build, dependencias ni servidor. Todo vive en `index.html`.
+No hay build, dependencias ni servidor. El sitio es un solo archivo:
+`public/index.html`.
 
-1. Clona el repo y abre `index.html` con doble clic (funciona con `file://`).
-2. O sírvelo: `python -m http.server 8765` y abre `http://localhost:8765`.
+1. Clona el repo y abre `public/index.html` con doble clic (funciona con
+   `file://`).
+2. O sírvelo: `python -m http.server 8765 --directory public` y abre
+   `http://localhost:8765`.
+
+También puedes editar sin instalar nada: en GitHub presiona `.` para abrir
+github.dev (VS Code en el navegador), crea una rama y abre el PR desde ahí.
 3. Agrega `?debug` a la URL para ver estadísticas en la consola cada 10 s.
 4. `probe.html` es una prueba mínima de conexión: úsala si sospechas que la
    fuente de datos cambió.
@@ -46,7 +52,43 @@ Ayuntamiento ni de sus apps, ni textos que hagan parecer que lo es.
 2. Haz un fork y una rama con un nombre descriptivo.
 3. Prueba en un celular (o con la vista móvil del navegador), en modo claro y
    oscuro.
-4. Abre el PR llenando la plantilla.
+4. Abre el PR llenando la plantilla. **El título sigue
+   [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/)**
+   (ver abajo); un check lo revisa.
+5. Un bot comenta en el PR un enlace de **vista previa** con tu cambio
+   funcionando. Se actualiza con cada push.
+6. Tras la revisión, se integra con *squash merge*: tu PR se vuelve un solo
+   commit en `main` con el título del PR.
+
+### Título del PR
+Formato `tipo: descripción` (la descripción en español, en minúscula y sin
+punto final). El tipo decide la versión:
+
+| Tipo | Para qué | Versión |
+|---|---|---|
+| `feat` | Algo nuevo para quien usa la página | 0.**X**.0 |
+| `fix` | Corrige un error | 0.0.**X** |
+| `perf` | Mejora el rendimiento | 0.0.**X** |
+| `docs` | Solo documentación | no publica |
+| `refactor`, `style`, `test`, `build`, `ci`, `chore` | Mantenimiento | no publica |
+
+Ejemplos: `feat: muestra la hora estimada de llegada`,
+`fix: el pin no se mueve en iOS`, `docs: aclara cómo correr el proyecto`.
+Un cambio incompatible lleva `!` (`feat!: …`).
+
+## Versiones y publicación
+Esto lo hace quien mantiene el proyecto; lo explicamos para que se entienda
+el ciclo.
+
+1. Cada merge a `main` **no** publica. release-please mantiene abierto un
+   **PR de versión** que acumula los cambios en `CHANGELOG.md` y sube la
+   versión.
+2. Al hacer merge del PR de versión se crean el tag (`vX.Y.Z`) y el GitHub
+   Release con sus notas.
+3. El despliegue a **https://basuragdl.tocaltepetl.org** espera aprobación
+   manual en el ambiente `production` de GitHub y luego se publica.
+4. Para volver a una versión anterior: Actions → **Desplegar** → *Run
+   workflow* con el tag (también pide aprobación).
 
 Las decisiones de diseño y su porqué están en
 [`docs/decisiones.md`](docs/decisiones.md); léelas antes de proponer cambios

@@ -1,3 +1,6 @@
+<!-- Título del PR: `tipo: descripción` (p. ej. `feat: …`, `fix: …`, `docs: …`).
+     Ver CONTRIBUTING.md → «Título del PR». -->
+
 ## Qué cambia y por qué
 <!-- Si resuelve un issue: "Cierra #N" -->
 
@@ -5,6 +8,7 @@
 - [ ] Celular (o vista móvil del navegador)
 - [ ] Modo claro y modo oscuro
 - [ ] Abriendo con `file://`
+- [ ] En la vista previa que comenta el bot
 
 ## Revisión
 - [ ] **No** aumenta las conexiones, suscripciones o reconexiones hacia la fuente de datos (si sí, explica por qué es necesario)

@@ -1,0 +1,44 @@
+# Despliega una versión (tag vX.Y.Z) a producción. Lo llama release.yml al
+# publicar una versión, o se lanza a mano (Actions → Desplegar → Run workflow)
+# para volver a una versión anterior. Siempre espera aprobación en «production».
+name: Desplegar
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Versión a publicar (tag, p. ej. v0.2.0)"
+        type: string
+        required: true
+permissions: {}
+concurrency:
+  group: produccion
+  cancel-in-progress: false
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://basuragdl.tocaltepetl.org
+    permissions:
+      contents: read
+    steps:
+      - name: Validar versión
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          [[ "$REF" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::«$REF» no es un tag de versión (vX.Y.Z)."; exit 1; }
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ inputs.ref }}
+          persist-credentials: false
+      - name: Desplegar a producción
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          REF: ${{ inputs.ref }}
+        run: npx -y wrangler@4.160.1 deploy --message "$REF"

@@ -3,3 +3,7 @@
 !.git/
 !.github/
 *.png
+
+# Herramientas
+node_modules/
+.wrangler/
