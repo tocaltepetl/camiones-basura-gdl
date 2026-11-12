@@ -2,7 +2,7 @@
 
 Registro de decisiones del proyecto, por etapa. Etapas acordadas:
 1. Local, en la laptop.
-2. Publicada como Artifact de claude.ai, privada.
+2. ~~Publicada como Artifact de claude.ai, privada.~~ Descartada: ver abajo.
 3. Dominio propio (GitHub Pages o Cloudflare Pages, por decidir).
 
 ---
@@ -80,3 +80,27 @@ desconexión por inactividad, tope de tiempo por sesión).
 ### Cómo revertir
 Nada fuera de este repo depende de la página: basta con borrar el repo o el
 sitio publicado.
+
+---
+
+## Etapa 2 — Artifact de claude.ai: descartada (2026-11-11)
+
+Se publicó `probe.html` como Artifact privado. El navegador bloqueó el
+WebSocket antes de conectarse:
+
+```
+NS_ERROR_CONTENT_BLOCKED — "The load for this content was blocked."
+origin: https://<id>.frame.claudeusercontent.com
+```
+
+Es la política de seguridad (CSP) de los Artifacts, que solo permite
+conexiones a dominios autorizados por claude.ai. El servidor del Ayuntamiento
+nunca recibió la conexión. No se intenta rodear: la etapa 2 se reemplaza por
+publicar en un dominio propio.
+
+### Repositorio público (2026-11-12)
+El código se publica en la organización de GitHub `tocaltepetl`, pensada para
+proyectos cívicos y separada de cualquier identidad personal. Licencia MIT.
+Un repo público hace más visible el uso de la fuente de datos; por eso el
+README y `CONTRIBUTING.md` incluyen reglas de uso responsable y cada PR
+declara si aumenta la carga.
