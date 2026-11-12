@@ -53,7 +53,7 @@ proyecto: los publica el Ayuntamiento de Guadalajara por su app.
 ## Publicación
 Sitio: **https://basuragdl.tocaltepetl.org** (Cloudflare Workers, solo archivos
 estáticos). Se publica desde GitHub Actions al liberar una versión; los
-cambios están en el [CHANGELOG](CHANGELOG.md).
+cambios están en los [Releases](https://github.com/tocaltepetl/camiones-basura-gdl/releases).
 
 ## Decisiones
 Ver [`docs/decisiones.md`](docs/decisiones.md).

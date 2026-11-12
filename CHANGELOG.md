@@ -1,5 +1,8 @@
 # Changelog
 
+Desde la 0.2.0 las notas de cada versión están en los
+[Releases de GitHub](https://github.com/tocaltepetl/camiones-basura-gdl/releases).
+
 ## 0.1.0 (2026-11-12)
 
 

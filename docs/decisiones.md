@@ -187,8 +187,8 @@ Nada se despliega desde una computadora. Workflows en `.github/workflows/`:
 | `pr-titulo.yml` | PR abierto o editado | Exige título Conventional Commits. |
 | `vista-previa.yml` | PR desde una rama del repo | `wrangler versions upload --preview-alias pr-N` (no toca producción) y comenta la URL. |
 | `vista-previa-fork.yml` | PR desde un fork | Sin secretos ni checkout del fork (`pull_request_target`): comenta un enlace de raw.githack.com al commit. |
-| `release.yml` | Push a `main` | release-please mantiene el PR de versión; al hacer merge crea tag y Release y llama a `desplegar.yml`. |
-| `desplegar.yml` | Release, o manual con un tag | `wrangler deploy` del tag, con **aprobación manual** en el ambiente `production`. Sirve para volver a una versión anterior. |
+| `release.yml` | Push a `main` | Calcula la versión; si hay, espera **aprobación manual** en `production`, despliega y crea tag y Release. (Hasta la 0.1.0 usaba release-please; ver abajo.) |
+| `desplegar.yml` | Manual con un tag | `wrangler deploy` del tag, con aprobación en `production`. Sirve para volver a una versión anterior. |
 
 - **Versiones:** release-please (`release-type: simple`), `CHANGELOG.md` en
   español, tags `vX.Y.Z`, empieza en 0.x (`bump-minor-pre-major`). La versión
@@ -222,3 +222,20 @@ Subdomain).
   (fuente, no se publica), `public/favicon.svg` y `public/og.png` (1200×630)
   con etiquetas Open Graph/Twitter hacia `https://basuragdl.tocaltepetl.org/`.
   Las etiquetas originales apuntaban a GitHub Pages, que no se usa.
+
+### Sin PR de versión (2026-11-12)
+release-please obligaba a hacer merge de un «PR de versión» que se quedaba
+abierto como recordatorio, y sus checks quedaban en `action_required` por
+abrirlo el `GITHUB_TOKEN`. Se reemplaza por `.github/scripts/siguiente-version.sh`
+(bash, sin dependencias): con cada push a `main` calcula la versión desde el
+último tag con las mismas reglas (0.x: `feat` y cambios incompatibles suben
+el menor; `fix`/`perf`/`revert` el parche) y escribe las notas agrupadas.
+- La única decisión de publicar es la **aprobación en `production`**, que ya
+  existía. El tag y el Release se crean **después** de desplegar bien, así
+  que un despliegue fallido no deja versiones fantasma.
+- El bot ya no hace commits a `main`: la versión se escribe en la página al
+  desplegar (sobre el enlace `class="ver"`; en el repo dice `dev`).
+- Las notas viven en los GitHub Releases; `CHANGELOG.md` queda como histórico
+  hasta la 0.1.0.
+- `concurrency` compartida (`produccion`) en ambos workflows: con varios
+  merges sin aprobar, GitHub cancela el pendiente anterior y queda el último.
