@@ -31,6 +31,21 @@ está documentada y puede fallar o cambiar sin aviso.
   municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
 - Modo claro y oscuro según el sistema; pensada para celular.
 
+## Datos abiertos
+Los reportes hechos con la guía son públicos y de libre uso (sin datos
+personales), en `https://basuragdl.tocaltepetl.org/api/reportes?dias=7|30&k=0..8`
+(`k=0` = todos los tipos de falla; se actualiza cada hora):
+
+| Campo | Qué es |
+|---|---|
+| `celdas` | Zonas de ~550 m (`c` = centro `[lng, lat]`) con su número de reportes `n`. Solo las que tienen al menos `minCelda` (5). |
+| `porTipo` | Reportes por tipo de falla `k` (1–8, en el orden del menú de GuaZap) y municipio `mun` (0 Guadalajara, 1 Zapopan, 2 otro de la ZMG). |
+| `resultados` | Cuántos dijeron que obtuvieron `folio`, que terminaron `sin-folio` o que se atoraron (`atorado`). |
+| `cambios` | Dónde el bot no coincidió con la guía: municipio, tipo de falla, `paso` y qué pidió (`menu`, `foto`, `direccion`, `ubicacion`, `datos`, `otro`). |
+
+Cuenta a quien usó esta guía, no el total de reportes al Ayuntamiento. Los
+eventos sueltos no se publican para que no se pueda identificar a nadie.
+
 ## Uso
 Abre `public/index.html` con doble clic (funciona con `file://`) o sírvelo:
 
