@@ -80,13 +80,16 @@ Un cambio incompatible lleva `!` (`feat!: …`).
 Esto lo hace quien mantiene el proyecto; lo explicamos para que se entienda
 el ciclo.
 
-1. Cada merge a `main` **no** publica. release-please mantiene abierto un
-   **PR de versión** que acumula los cambios en `CHANGELOG.md` y sube la
-   versión.
-2. Al hacer merge del PR de versión se crean el tag (`vX.Y.Z`) y el GitHub
-   Release con sus notas.
-3. El despliegue a **https://basuragdl.tocaltepetl.org** espera aprobación
-   manual en el ambiente `production` de GitHub y luego se publica.
+1. Con cada merge a `main` se calcula la siguiente versión a partir de los
+   títulos de los PR desde la última (tabla de arriba). Si solo hubo `docs`,
+   `ci`, `chore`…, no se publica nada.
+2. Si hay versión nueva, el despliegue a **https://basuragdl.tocaltepetl.org**
+   espera aprobación manual en el ambiente `production` de GitHub; el resumen
+   del workflow muestra la versión y las notas propuestas.
+3. Al aprobar se publica y se crean el tag (`vX.Y.Z`) y el
+   [GitHub Release](https://github.com/tocaltepetl/camiones-basura-gdl/releases)
+   con sus notas. Si se juntan varios merges sin aprobar, queda solo el más
+   reciente, que los incluye todos.
 4. Para volver a una versión anterior: Actions → **Desplegar** → *Run
    workflow* con el tag (también pide aprobación).
 

@@ -1,13 +1,8 @@
-# Despliega una versión (tag vX.Y.Z) a producción. Lo llama release.yml al
-# publicar una versión, o se lanza a mano (Actions → Desplegar → Run workflow)
-# para volver a una versión anterior. Siempre espera aprobación en «production».
+# Vuelve a publicar una versión ya liberada (tag vX.Y.Z), p. ej. para regresar
+# a una anterior: Actions → Desplegar → Run workflow. Las versiones nuevas las
+# publica release.yml. Siempre espera aprobación en «production».
 name: Desplegar
 on:
-  workflow_call:
-    inputs:
-      ref:
-        type: string
-        required: true
   workflow_dispatch:
     inputs:
       ref:
@@ -36,6 +31,12 @@ jobs:
         with:
           ref: refs/tags/${{ inputs.ref }}
           persist-credentials: false
+      - name: Poner la versión en la página
+        env:
+          VERSION: ${{ inputs.ref }}
+        run: |
+          # Los tags anteriores a v0.2.0 ya traen la versión escrita; ahí no cambia nada.
+          sed -i -E "s|(class=\"ver\"[^>]*>)[^<]*(</a>)|\1$VERSION\2|" public/index.html
       - name: Desplegar a producción
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
