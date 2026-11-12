@@ -1,0 +1,34 @@
+# Con cada push a main, release-please mantiene un «PR de versión» con el
+# CHANGELOG y la versión nueva. Al hacer merge de ese PR crea el tag y el
+# GitHub Release, y entonces se despliega a producción (con aprobación manual
+# en el ambiente «production»).
+name: Versión
+on:
+  push:
+    branches: [main]
+permissions: {}
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: rp
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+  desplegar:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/desplegar.yml
+    with:
+      ref: ${{ needs.release-please.outputs.tag_name }}
+    secrets: inherit

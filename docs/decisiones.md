@@ -159,3 +159,53 @@ E, o dejarlo así.
 Los valores de configuración (tiempos, márgenes, zoom, tamaños) viven en un
 bloque al inicio del script, con nombre y comentario; no hay números sueltos
 en la lógica.
+
+## Etapa 3 — despliegue desde GitHub (2026-11-12)
+
+### El servidor acepta el origen de Cloudflare
+Se publicó `probe.html` en un Worker desechable
+(`https://cbg-prueba.<subdominio>.workers.dev`): conexión establecida y 20/20
+suscripciones, sin errores ni cierres. Después se borró el Worker.
+
+### Cloudflare Workers en vez de Pages
+Wrangler 4.160 ya no crea proyectos de Pages sin `--force`: indica que Pages
+«ahora es parte de Workers» y recomienda Workers con archivos estáticos. Para
+no construir sobre algo de salida, el sitio es un **Worker solo con archivos
+estáticos** (`wrangler.jsonc`, sin código de servidor):
+- Dominio propio `basuragdl.tocaltepetl.org` declarado como `custom_domain`
+  (Cloudflare crea el DNS); `workers_dev: false`.
+- `preview_urls: true` para las vistas previas de los PR.
+- Solo se publica la carpeta `public/`. Se descartó publicar la raíz con un
+  `.assetsignore`: Wrangler no permite listar qué subiría, y un error ahí
+  publicaría `docs/` o algo peor.
+
+### GitHub como única vía de publicación
+Nada se despliega desde una computadora. Workflows en `.github/workflows/`:
+
+| Workflow | Cuándo | Qué hace |
+|---|---|---|
+| `pr-titulo.yml` | PR abierto o editado | Exige título Conventional Commits. |
+| `vista-previa.yml` | PR desde una rama del repo | `wrangler versions upload --preview-alias pr-N` (no toca producción) y comenta la URL. |
+| `vista-previa-fork.yml` | PR desde un fork | Sin secretos ni checkout del fork (`pull_request_target`): comenta un enlace de raw.githack.com al commit. |
+| `release.yml` | Push a `main` | release-please mantiene el PR de versión; al hacer merge crea tag y Release y llama a `desplegar.yml`. |
+| `desplegar.yml` | Release, o manual con un tag | `wrangler deploy` del tag, con **aprobación manual** en el ambiente `production`. Sirve para volver a una versión anterior. |
+
+- **Versiones:** release-please (`release-type: simple`), `CHANGELOG.md` en
+  español, tags `vX.Y.Z`, empieza en 0.x (`bump-minor-pre-major`). La versión
+  se muestra en el pie de la página (marcador `x-release-please-version`).
+- **Squash merge** obligatorio: el título del PR es el commit que lee
+  release-please.
+- **Seguridad:** actions fijadas por SHA, `permissions: {}` por defecto y
+  mínimos por job, `persist-credentials: false`, Wrangler con versión exacta,
+  entradas del evento siempre por variables de entorno (nunca interpoladas en
+  el script). El token de Cloudflare vive solo en los ambientes `preview` y
+  `production`; el de `production` exige aprobación y solo corre desde `main`.
+- **Límite conocido:** los PR que crea release-please con el `GITHUB_TOKEN`
+  no disparan otros workflows (regla de GitHub), así que el PR de versión no
+  tiene vista previa ni check de título; no los necesita.
+
+### Subdominio de cuenta `cbg-deploy`
+Al desplegar la prueba, Wrangler registró el subdominio de `workers.dev` de la
+cuenta con el nombre de la carpeta temporal (`cbg-deploy`). Aparece en las URLs
+de vista previa; se puede cambiar en el panel (Workers & Pages → Settings →
+Subdomain).

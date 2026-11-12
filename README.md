@@ -7,7 +7,7 @@
 
 Mapa en vivo, **no oficial**, de los camiones de basura de Guadalajara.
 
-Un solo archivo estático (`index.html`), sin servidor propio: el navegador se
+Un solo archivo estático (`public/index.html`), sin servidor propio: el navegador se
 conecta directo al WebSocket público que usa la app municipal. Esa fuente no
 está documentada y puede fallar o cambiar sin aviso.
 
@@ -23,10 +23,10 @@ está documentada y puede fallar o cambiar sin aviso.
 - Modo claro y oscuro según el sistema; pensada para celular.
 
 ## Uso
-Abre `index.html` con doble clic (funciona con `file://`) o sírvelo:
+Abre `public/index.html` con doble clic (funciona con `file://`) o sírvelo:
 
 ```sh
-python -m http.server 8765
+python -m http.server 8765 --directory public
 ```
 
 Agrega `?debug` a la URL para ver estadísticas en la consola cada 10 s, y
@@ -48,6 +48,11 @@ Issues y PRs bienvenidos. Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el
 ## Licencia
 El código: [MIT](LICENSE). Los datos que muestra la página no son de este
 proyecto: los publica el Ayuntamiento de Guadalajara por su app.
+
+## Publicación
+Sitio: **https://basuragdl.tocaltepetl.org** (Cloudflare Workers, solo archivos
+estáticos). Se publica desde GitHub Actions al liberar una versión; los
+cambios están en el [CHANGELOG](CHANGELOG.md).
 
 ## Decisiones
 Ver [`docs/decisiones.md`](docs/decisiones.md).

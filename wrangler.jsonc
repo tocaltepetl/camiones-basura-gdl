@@ -1,0 +1,16 @@
+// Configuración de Cloudflare Workers. Solo sirve archivos estáticos (sin código
+// de servidor). Lo usan los workflows de GitHub Actions; no hace falta correrlo
+// a mano. Ver docs/decisiones.md («Despliegue»).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "camiones-basura-gdl",
+  "compatibility_date": "2026-11-10",
+  "assets": {
+    "directory": "./public"   // solo esta carpeta se publica
+  },
+  "routes": [
+    { "pattern": "basuragdl.tocaltepetl.org", "custom_domain": true }
+  ],
+  "workers_dev": false,  // producción solo en el dominio propio
+  "preview_urls": true   // URLs de vista previa por versión (para los PR)
+}
