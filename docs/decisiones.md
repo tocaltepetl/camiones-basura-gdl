@@ -239,3 +239,48 @@ el menor; `fix`/`perf`/`revert` el parche) y escribe las notas agrupadas.
   hasta la 0.1.0.
 - `concurrency` compartida (`produccion`) en ambos workflows: con varios
   merges sin aprobar, GitHub cancela el pendiente anterior y queda el último.
+
+## Conteo anónimo de reportes y mapa de calor (2026-11-12, issue #14)
+
+Se quería saber cuánto se usa la guía de GuaZap, si la gente obtiene folio y
+si los menús del bot coinciden con la guía en cada escenario. Esto rompe a
+propósito el «nada sale del navegador»: el sitio deja de ser solo estático.
+
+**Opciones:** Workers Analytics Engine · **D1 (elegida)** · KV.
+Analytics Engine solo se consulta con su API SQL y un token de cuenta guardado
+en el Worker; D1 se consulta desde el propio Worker con un binding y agrega
+con SQL normal. KV no sirve para agregar.
+
+- `src/worker.js` atiende solo `/api/*` (`run_worker_first`); lo demás sigue
+  saliendo directo de `public/` sin pasar por el Worker.
+- `POST /api/evento`: solo valores de listas cerradas (municipio, tipo de
+  falla, días agrupados en 1/2/3/4–7/8+, resultado, paso, qué cambió). Sin
+  texto libre, cookies, IP ni identificadores. La IP solo es la llave en memoria
+  del límite de peticiones (10/min, binding `LIMITE`).
+- **Ubicación:** el navegador manda la celda `floor(lat/0.005), floor(lng/0.005)`
+  (~550 m), solo si hay punto marcado. El Worker rechaza celdas fuera de la ZMG.
+- `GET /api/reportes?dias=7|30&k=0..8`: agregados cacheados 1 h. Las celdas con
+  **menos de 5** reportes en el periodo no se publican.
+- Solo el dominio de producción (y `localhost`) guarda eventos: las vistas
+  previas de los PR comparten la base y no deben ensuciarla.
+- **Seguimiento:** al tocar «Abrir GuaZap» se cuenta un evento `abrir`; al volver
+  a la pestaña la ficha pregunta una vez cómo le fue y si el bot preguntó lo
+  mismo (y en qué paso cambió). Eso dice qué escenarios de la guía corregir.
+- **Optar por no participar:** casilla en la ficha, recordada en `localStorage`
+  (`camiones-basura-gdl:contar-reportes`).
+- **Mapa:** botón «Reportes», capa `heatmap` de MapLibre (se vuelve a agregar
+  tras cambiar el estilo claro/oscuro), filtros por tipo y periodo, totales y
+  % con folio. Se aclara que cuenta solo a quien usó la guía.
+- **Migraciones:** `migrations/`, aplicadas por `release.yml` antes de desplegar.
+  Solo migraciones que agregan, para que `desplegar.yml` pueda volver a una
+  versión anterior.
+- **Verificado** con `wrangler dev` y D1 local: validación (400/403), umbral de
+  celda, agregados, ficha de seguimiento y capa de calor en Chromium.
+
+### Para activarlo (una sola vez, en la cuenta de Cloudflare)
+1. ~~`npx wrangler@4.160.1 d1 create camiones-basura-gdl` y poner el
+   `database_id` en `wrangler.jsonc`.~~ Hecho el 2026-11-12.
+2. Dar al token de los ambientes `preview` y `production` el permiso
+   **D1: Edit**.
+
+**Pendiente:** retención (borrar eventos de más de un año) con un cron.

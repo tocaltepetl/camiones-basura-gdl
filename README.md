@@ -7,7 +7,8 @@
 
 Mapa en vivo, **no oficial**, de los camiones de basura de Guadalajara.
 
-Un solo archivo estático (`public/index.html`), sin servidor propio: el navegador se
+Un archivo estático (`public/index.html`) más un Worker mínimo para contar
+reportes de forma anónima (`src/worker.js`). El navegador se
 conecta directo al WebSocket público que usa la app municipal. Esa fuente no
 está documentada y puede fallar o cambiar sin aviso.
 
@@ -25,6 +26,9 @@ está documentada y puede fallar o cambiar sin aviso.
   por GuaZap (WhatsApp del Ayuntamiento) que el camión no pasó u otra falla,
   con las respuestas del menú listas para copiar. Solo abre WhatsApp; el
   reporte lo envía la persona.
+- **Reportes**: mapa de calor y totales de los reportes hechos con la guía.
+  Solo se cuenta, de forma anónima y desactivable, el tipo de falla, el
+  municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
 - Modo claro y oscuro según el sistema; pensada para celular.
 
 ## Uso
