@@ -129,6 +129,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   <label for="hDays">Periodo</label><select id="hDays"><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option></select>
   <div class="bar"></div><div class="scale"><span>pocos</span><span>muchos</span></div>
   <div id="hSum">Cargando…</div>
+  <p><a id="hData" href="/api/reportes?dias=7&k=0" target="_blank" rel="noopener">Descargar estos datos (JSON) ↗</a> · <a href="https://github.com/tocaltepetl/camiones-basura-gdl#datos-abiertos" target="_blank" rel="noopener">qué contienen</a></p>
   <p class="hint">Cuenta quién tocó «Abrir GuaZap» desde aquí, no el total de reportes al Ayuntamiento. Zonas de ~500 m; las que tienen menos de <span id="hMin">5</span> reportes no se muestran.</p>
 </div></div>
 <div id="near"></div>
@@ -570,8 +571,20 @@ async function loadHeat() {
     .filter(x => x[1]).sort((a, b) => b[1] - a[1]).map(([name, n]) => `<li>${esc(name)}: <b>${n}</b></li>`).join("") + "</ul>";
   hSum.innerHTML = `<p><b>${total}</b> ${total === 1 ? "persona abrió" : "personas abrieron"} GuaZap desde aquí.</p>` + byKind +
     (answered ? `<p>De ${answered} que nos contaron cómo les fue, <b>${Math.round(100 * (res.folio || 0) / answered)} %</b> obtuvo folio.</p>` : "") +
-    (heatData.celdas.length ? "" : `<p class="hint">Todavía no hay zonas con suficientes reportes para mostrarlas.</p>`);
+    (heatData.celdas.length ? "" : `<p class="hint">Todavía no hay zonas con suficientes reportes para mostrarlas.</p>`) +
+    changesHtml(heatData.cambios);
+  const dl = `/api/reportes?dias=${hDays.value}&k=${hKind.value}`;
+  document.getElementById("hData").href = dl;
   removeHeatLayer(); addHeatLayer();
+}
+// Dónde la guía no coincide con el bot, para que cualquiera vea qué escenarios fallan.
+const CHANGE_NAMES = {menu: "el menú u opciones eran otras", foto: "pidió una foto", direccion: "pidió la dirección escrita",
+  ubicacion: "pidió la ubicación de WhatsApp", datos: "pidió datos personales", otro: "otra cosa"};
+function changesHtml(list) {
+  if (!list.length) return "";
+  const rows = [...list].sort((a, b) => b.n - a.n).slice(0, 8).map(x =>
+    `<li>${esc(GUAZAP_MUNIS[x.mun] || "?")} · ${esc(GUAZAP_KINDS[x.k - 1] || "?")}${x.paso ? ` · paso ${x.paso}` : ""}: ${esc(CHANGE_NAMES[x.cambio] || x.cambio)} (<b>${x.n}</b>)</li>`).join("");
+  return `<p><b>Dónde el bot no coincidió con la guía</b></p><ul>${rows}</ul>`;
 }
 function setHeat(on) {
   heat.hidden = !on; btnHeat.classList.toggle("active", on); btnHeat.setAttribute("aria-pressed", on);

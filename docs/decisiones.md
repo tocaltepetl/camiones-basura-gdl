@@ -284,3 +284,10 @@ con SQL normal. KV no sirve para agregar.
    **D1: Edit**.
 
 **Pendiente:** retención (borrar eventos de más de un año) con un cron.
+
+### Datos abiertos (2026-11-12)
+El proyecto busca dar a la ciudadanía la mayor cantidad de datos posible.
+`/api/reportes` es público, con `Access-Control-Allow-Origin: *` y
+documentado en el README. El panel muestra también dónde el bot no coincidió
+con la guía y enlaza al JSON. Los límites de privacidad no cambian: no se
+publican eventos sueltos ni celdas con menos de 5 reportes.

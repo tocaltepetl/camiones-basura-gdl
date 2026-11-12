@@ -117,7 +117,8 @@ async function reportes(req, env, ctx, url) {
     resultados: Object.fromEntries(resultados.results.map(r => [r.res, r.n])),
     cambios: cambios.results,
   };
-  const resp = json(body, 200, {"cache-control": `public, max-age=${CACHE_S}`});
+  // Datos abiertos: cualquier sitio o herramienta puede leerlos (README → «Datos abiertos»).
+  const resp = json(body, 200, {"cache-control": `public, max-age=${CACHE_S}`, "access-control-allow-origin": "*"});
   ctx.waitUntil(cache.put(key, resp.clone()));
   return resp;
 }
