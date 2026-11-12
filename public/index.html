@@ -130,6 +130,9 @@ const IDLE_CHECK_MS = Math.min(30 * SECOND, IDLE_MS / 4);
 // Mapa
 const START_CENTER = [-103.3496, 20.6597];  // Guadalajara [lng, lat]
 const START_ZOOM = 11.5;
+// Caja de la ZMG con margen (Zapopan norte a Tlajomulco sur, Tlajomulco oeste a Zapotlanejo/Juanacatlán este).
+// [[oeste, sur], [este, norte]]. MapLibre no deja salir la vista de aquí ni alejar más de lo que cabe.
+const ZMG_BOUNDS = [[-103.75, 20.30], [-102.95, 21.05]];
 const FOCUS_ZOOM = 16;                     // al enfocar un camión o un punto
 const FIT_PADDING_PX = 50;
 const POPUP_OFFSET_PX = 18;
@@ -151,7 +154,7 @@ const CHANNELS = Array.from({length: CHANNEL_COUNT}, (_, i) => "geocerca." + (i 
 const dark = matchMedia("(prefers-color-scheme: dark)");
 const styleUrl = () => "https://tiles.openfreemap.org/styles/" + (dark.matches ? "dark" : "positron");
 const map = new maplibregl.Map({
-  container: "map", style: styleUrl(), center: START_CENTER, zoom: START_ZOOM,
+  container: "map", style: styleUrl(), center: START_CENTER, zoom: START_ZOOM, maxBounds: ZMG_BOUNDS,
   attributionControl: {compact: true}
 });
 map.addControl(new maplibregl.NavigationControl({showCompass: false}), "top-left");
