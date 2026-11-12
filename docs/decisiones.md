@@ -278,8 +278,8 @@ con SQL normal. KV no sirve para agregar.
   celda, agregados, ficha de seguimiento y capa de calor en Chromium.
 
 ### Para activarlo (una sola vez, en la cuenta de Cloudflare)
-1. `npx wrangler@4.160.1 d1 create camiones-basura-gdl` y poner el
-   `database_id` en `wrangler.jsonc` (en lugar de `REEMPLAZAR-CON-EL-ID-DE-D1`).
+1. ~~`npx wrangler@4.160.1 d1 create camiones-basura-gdl` y poner el
+   `database_id` en `wrangler.jsonc`.~~ Hecho el 2026-11-12.
 2. Dar al token de los ambientes `preview` y `production` el permiso
    **D1: Edit**.
 

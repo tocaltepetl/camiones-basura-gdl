@@ -3,31 +3,43 @@
 // Lo usan los workflows de GitHub Actions; no hace falta correrlo a mano.
 // Ver docs/decisiones.md («Despliegue» y «Conteo anónimo de reportes»).
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "camiones-basura-gdl",
-  "main": "src/worker.js",
-  "compatibility_date": "2026-11-10",
-  "assets": {
-    "directory": "./public",          // solo esta carpeta se publica
-    "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]    // el resto no pasa por el Worker
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "camiones-basura-gdl",
-      // Se crea una vez con `wrangler d1 create camiones-basura-gdl` (ver decisiones.md).
-      "database_id": "REEMPLAZAR-CON-EL-ID-DE-D1",
-      "migrations_dir": "migrations"
-    }
-  ],
-  "ratelimits": [
-    // Contra spam en POST /api/evento: 10 por minuto por IP (la IP no se guarda).
-    { "name": "LIMITE", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }
-  ],
-  "routes": [
-    { "pattern": "basuragdl.tocaltepetl.org", "custom_domain": true }
-  ],
-  "workers_dev": false,  // producción solo en el dominio propio
-  "preview_urls": true   // URLs de vista previa por versión (para los PR)
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "camiones-basura-gdl",
+	"main": "src/worker.js",
+	"compatibility_date": "2026-11-10",
+	"assets": {
+		"directory": "./public", // solo esta carpeta se publica
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		] // el resto no pasa por el Worker
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "camiones-basura-gdl",
+			// Creada con `wrangler d1 create camiones-basura-gdl` (ver decisiones.md).
+			"database_id": "6efd523d-37af-48b0-a639-52237a3fe804",
+			"migrations_dir": "migrations"
+		}
+	],
+	"ratelimits": [
+		// Contra spam en POST /api/evento: 10 por minuto por IP (la IP no se guarda).
+		{
+			"name": "LIMITE",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
+	],
+	"routes": [
+		{
+			"pattern": "basuragdl.tocaltepetl.org",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": false, // producción solo en el dominio propio
+	"preview_urls": true // URLs de vista previa por versión (para los PR)
 }
