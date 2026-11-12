@@ -40,6 +40,11 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .opt input{vertical-align:middle;margin:0 4px 0 0}
 #conn{cursor:default}
 .ver{color:var(--muted)}
+.links{display:block;margin-top:4px}
+.links a{color:var(--fg)}
+.repo{display:inline-flex;align-items:center;gap:4px;color:var(--fg);text-decoration:none}
+.repo:hover{border-color:var(--acc)}
+@media (max-width:480px){.repo{display:none}}  /* en celular queda el enlace del pie */
 footer{font-size:12px;color:var(--muted);padding:6px 16px calc(6px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .truck{display:flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 5px;border-radius:14px;background:var(--acc);color:var(--on-acc);font:600 12px system-ui;border:2px solid #fff;box-shadow:0 1px 4px #0006;cursor:pointer}
 .truck.old{background:var(--old);color:#fff}
@@ -57,6 +62,7 @@ footer{font-size:12px;color:var(--muted);padding:6px 16px calc(6px + env(safe-ar
 <header>
   <h1><img src="favicon.svg" alt="" width="22" height="22" style="vertical-align:-3px"> Camiones de basura GDL</h1>
   <span class="pill"><span id="dot" class="dot"></span><span id="conn">Conectando…</span></span>
+  <a class="pill repo" href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener" title="Código fuente en GitHub" aria-label="Código fuente en GitHub"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Código</a>
   <span class="pill"><b id="count">0</b> en el mapa</span>
   <button id="btnNear">Cerca de mí</button>
   <button id="btnPick" class="sec">Elegir punto</button>
@@ -65,7 +71,8 @@ footer{font-size:12px;color:var(--muted);padding:6px 16px calc(6px + env(safe-ar
 <div id="near"></div>
 <footer>No oficial. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso. Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado.
   <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso (ahorra datos y no carga al servidor)</label>
-  <a class="ver" href="https://github.com/tocaltepetl/camiones-basura-gdl/blob/main/CHANGELOG.md">v0.1.0</a> <!-- x-release-please-version -->
+  <span class="links"><a href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener">Código abierto en GitHub</a> · <a href="https://github.com/tocaltepetl/camiones-basura-gdl/issues/new/choose" target="_blank" rel="noopener">Reportar un problema</a> ·
+  <a class="ver" href="https://github.com/tocaltepetl/camiones-basura-gdl/blob/main/CHANGELOG.md">v0.1.0</a></span> <!-- x-release-please-version -->
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.js"></script>
