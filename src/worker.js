@@ -32,6 +32,7 @@ export default {
     try {
       if (url.pathname === "/api/evento") return await evento(req, env, url);
       if (url.pathname === "/api/reportes") return await reportes(req, env, ctx, url);
+      if (url.pathname === "/api/reportes.csv") return await reportesCsv(req, env, ctx, url);
     } catch (e) {   // p. ej. D1 sin migrar o caída: la página muestra «No se pudieron cargar»
       console.error(e);
       return json({error: "no disponible"}, 503);
@@ -119,6 +120,91 @@ async function reportes(req, env, ctx, url) {
   };
   // Datos abiertos: cualquier sitio o herramienta puede leerlos (README → «Datos abiertos»).
   const resp = json(body, 200, {"cache-control": `public, max-age=${CACHE_S}`, "access-control-allow-origin": "*"});
+  ctx.waitUntil(cache.put(key, resp.clone()));
+  return resp;
+}
+
+// ---------- un renglón por reporte (CSV de datos abiertos) ----------
+// Generalizado para que no se pueda reconocer a nadie (docs/decisiones.md,
+// «Reportes individuales»):
+// - Fecha: solo el día, en hora de Guadalajara. Para los tipos sensibles, el
+//   lunes de su semana.
+// - Zona: celda de CSV_CELL_DEG (~1.1 km), solo si al menos CSV_MIN reportes
+//   comparten día, zona y tipo; si no, va vacía (queda el municipio). Los
+//   tipos sensibles nunca llevan zona.
+// - Las respuestas de seguimiento («resultado») no llevan zona.
+// - Sin id ni hora; los renglones van ordenados por sus columnas, no por llegada.
+const CSV_CELL_DEG = 0.01;          // múltiplo exacto de CELL_DEG (2×)
+const CSV_MIN = 3;
+const CSV_MAX_DAYS = 366;           // rango máximo por descarga
+const CSV_DEFAULT_DAYS = 90;
+const TZ_OFFSET_MS = -6 * 3600000;  // Guadalajara: UTC−6 todo el año (sin horario de verano desde 2022)
+// Tipos que podría leer la cuadrilla de la ruta y adivinar quién reportó.
+const SENSITIVE = new Set([5, 6, 7]);
+const MUNI_NAMES = ["Guadalajara", "Zapopan", "Otro municipio de la ZMG"];
+const KIND_NAMES = [   // como en el menú de GuaZap (GUAZAP_KINDS de la página)
+  "Camión recolector no ha pasado en días",
+  "Camión no recorre toda la calle",
+  "Derrames al compactar la basura",
+  "La unidad pasa muy rápido",
+  "Personal condiciona el servicio",
+  "Personal grosero",
+  "Personal no campanea",
+  "Recolección inconclusa",
+];
+const DAY_LABELS = {1: "1", 2: "2", 3: "3", 4: "4-7", 8: "8+"};
+const CSV_COLS = ["tipo", "fecha", "municipio", "falla", "falla_nombre", "dias_sin_pasar", "zona_lat", "zona_lng", "resultado", "paso", "cambio"];
+
+const isoDay = ms => new Date(ms + TZ_OFFSET_MS).toISOString().slice(0, 10);
+function weekStart(ms) {   // lunes de la semana, en hora local
+  const d = new Date(ms + TZ_OFFSET_MS);
+  d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7);
+  return d.toISOString().slice(0, 10);
+}
+const parseDay = v => /^\d{4}-\d{2}-\d{2}$/.test(v || "") && !isNaN(Date.parse(v + "T00:00:00Z")) ? Date.parse(v + "T00:00:00Z") - TZ_OFFSET_MS : null;
+const csvCell = v => v === null || v === undefined ? "" : /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+
+async function reportesCsv(req, env, ctx, url) {
+  if (req.method !== "GET") return json({error: "usa GET"}, 405);
+  const today = parseDay(isoDay(Date.now()));
+  let hasta = parseDay(url.searchParams.get("hasta")) ?? today;
+  hasta = Math.min(hasta, today);
+  let desde = parseDay(url.searchParams.get("desde")) ?? hasta - (CSV_DEFAULT_DAYS - 1) * DAY_MS;
+  if (desde > hasta) return json({error: "desde > hasta"}, 400);
+  desde = Math.max(desde, hasta - (CSV_MAX_DAYS - 1) * DAY_MS);
+  const key = new Request(`${url.origin}/api/reportes.csv?desde=${isoDay(desde)}&hasta=${isoDay(hasta)}`);
+  const cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) return hit;
+
+  const {results} = await env.DB.prepare(
+    "SELECT ts, tipo, mun, k, dias, ci, cj, res, paso, cambio FROM eventos WHERE ts >= ?1 AND ts < ?2"
+  ).bind(desde, hasta + DAY_MS).all();
+
+  const rows = results.map(e => {
+    const sensitive = SENSITIVE.has(e.k);
+    const zone = e.tipo === "abrir" && !sensitive && e.ci !== null
+      ? [Math.floor(e.ci / 2), Math.floor(e.cj / 2)] : null;   // celda de 0.005° → de 0.01°
+    return {e, fecha: sensitive ? weekStart(e.ts) : isoDay(e.ts), zone};
+  });
+  // Regla de mínimo: zona solo si CSV_MIN reportes comparten día, zona y tipo.
+  const groups = new Map();
+  const gk = r => `${r.fecha}|${r.zone}|${r.e.k}`;
+  for (const r of rows) if (r.zone) groups.set(gk(r), (groups.get(gk(r)) || 0) + 1);
+  const lines = rows.map(({e, fecha, zone}) => {
+    const z = zone && groups.get(`${fecha}|${zone}|${e.k}`) >= CSV_MIN ? zone : null;
+    return [e.tipo, fecha, MUNI_NAMES[e.mun], e.k, KIND_NAMES[e.k - 1], DAY_LABELS[e.dias] ?? null,
+      z ? ((z[0] + 0.5) * CSV_CELL_DEG).toFixed(3) : null, z ? ((z[1] + 0.5) * CSV_CELL_DEG).toFixed(3) : null,
+      e.res, e.paso, e.cambio].map(csvCell).join(",");
+  }).sort();   // orden por columnas: no revela el orden de llegada
+
+  const body = "﻿" + [CSV_COLS.join(","), ...lines].join("\n") + "\n";   // BOM: Excel abre bien los acentos
+  const resp = new Response(body, {headers: {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": `inline; filename="reportes-guazap-${isoDay(desde)}_${isoDay(hasta)}.csv"`,
+    "cache-control": `public, max-age=${CACHE_S}`,
+    "access-control-allow-origin": "*",
+  }});
   ctx.waitUntil(cache.put(key, resp.clone()));
   return resp;
 }
