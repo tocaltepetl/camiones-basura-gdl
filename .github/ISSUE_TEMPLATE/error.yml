@@ -1,0 +1,30 @@
+name: Reportar un error
+description: Algo no funciona como debería.
+labels: ["error"]
+body:
+  - type: textarea
+    id: que
+    attributes:
+      label: ¿Qué pasó?
+      description: Describe el error y qué esperabas que pasara.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: "1. Abrí la página en…\n2. Toqué…"
+  - type: input
+    id: navegador
+    attributes:
+      label: Navegador y dispositivo
+      placeholder: "Firefox 140 en Android, Chrome en Windows…"
+  - type: textarea
+    id: consola
+    attributes:
+      label: Mensajes de la consola (opcional)
+      description: Abre la página con `?debug` y copia lo que aparezca en la consola.
+      render: text
+  - type: markdown
+    attributes:
+      value: "⚠️ No incluyas tu ubicación, dirección ni capturas que la muestren."

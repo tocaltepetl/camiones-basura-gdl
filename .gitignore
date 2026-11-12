@@ -1,4 +1,5 @@
 # Perfiles temporales de navegador y capturas de prueba
 .*/
 !.git/
+!.github/
 *.png

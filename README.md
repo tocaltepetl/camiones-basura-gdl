@@ -1,4 +1,9 @@
-# Camiones GDL
+# Camiones de basura GDL
+
+> **English:** unofficial live map of Guadalajara's **garbage trucks** (not public transit buses). A single
+> static HTML page that connects straight from the browser to the public
+> WebSocket used by the city's app. No backend. Contributions welcome — see
+> [CONTRIBUTING.md](CONTRIBUTING.md) (in Spanish; English is fine in issues and PRs).
 
 Mapa en vivo, **no oficial**, de los camiones de basura de Guadalajara.
 
@@ -26,6 +31,20 @@ Agrega `?debug` a la URL para ver estadísticas en la consola cada 10 s.
 
 `probe.html` es una prueba mínima de conexión: se suscribe a 20 canales y
 cuenta mensajes. Sirve para diagnosticar si la fuente cambió.
+
+## Uso responsable
+La fuente de datos no es oficial ni está documentada. Si se abusa de ella,
+pueden cerrarla y el proyecto deja de funcionar para todos. No uses este
+código para abrir más conexiones, hacer scrapers o guardar datos en masa.
+Detalles en [CONTRIBUTING.md](CONTRIBUTING.md#uso-responsable-de-la-fuente-de-datos).
+
+## Contribuir
+Issues y PRs bienvenidos. Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el
+[código de conducta](CODE_OF_CONDUCT.md).
+
+## Licencia
+El código: [MIT](LICENSE). Los datos que muestra la página no son de este
+proyecto: los publica el Ayuntamiento de Guadalajara por su app.
 
 ## Decisiones
 Ver [`docs/decisiones.md`](docs/decisiones.md).
