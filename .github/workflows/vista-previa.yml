@@ -11,7 +11,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   subir:
-    if: github.event.pull_request.head.repo.full_name == github.repository
+    # Solo ramas de este repo, y no el PR de versión de release-please.
+    if: github.event.pull_request.head.repo.full_name == github.repository && !startsWith(github.head_ref, 'release-please--')
     runs-on: ubuntu-latest
     environment:
       name: preview
@@ -31,7 +32,15 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
           SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          out=$(npx -y wrangler@4.160.1 versions upload --preview-alias "pr-$PR" --message "PR #$PR (${SHA:0:7})" 2>&1) || { echo "$out"; exit 1; }
+          if ! out=$(npx -y wrangler@4.160.1 versions upload --preview-alias "pr-$PR" --message "PR #$PR (${SHA:0:7})" 2>&1); then
+            echo "$out"
+            # Antes del primer despliegue a producción no hay Worker al que subir versiones.
+            if grep -q "does not yet exist" <<<"$out"; then
+              echo "::notice::Aún no hay despliegue en producción; la vista previa estará disponible después del primero."
+              echo "url=" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            exit 1
+          fi
           echo "$out"
           url=$(grep -oE 'https://pr-[^ ]+\.workers\.dev' <<<"$out" | tail -1)
           [ -n "$url" ] || url=$(grep -oE 'https://[^ ]+\.workers\.dev' <<<"$out" | tail -1)
@@ -45,10 +54,15 @@ jobs:
           SHA: ${{ github.event.pull_request.head.sha }}
           URL: ${{ steps.subir.outputs.url }}
         run: |
+          if [ -z "$URL" ]; then
+            body="<!-- vista-previa -->
+          🔎 **Vista previa:** todavía no disponible: se activa después del primer despliegue a producción."
+          else
           body="<!-- vista-previa -->
           🔎 **Vista previa:** $URL
 
           Commit \`${SHA:0:7}\` · se actualiza con cada push · no afecta producción."
+          fi
           marker="<!-- vista-previa -->"
           id=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
             --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"$marker\"))) | .id" | head -1)

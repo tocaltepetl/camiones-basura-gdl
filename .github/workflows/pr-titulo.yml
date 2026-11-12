@@ -7,6 +7,8 @@ on:
 permissions: {}
 jobs:
   titulo:
+    # El PR de versión lo crea release-please y ya trae el formato correcto.
+    if: "!startsWith(github.head_ref, 'release-please--')"
     runs-on: ubuntu-latest
     steps:
       - name: Revisar formato
