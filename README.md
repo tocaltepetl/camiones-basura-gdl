@@ -21,6 +21,10 @@ está documentada y puede fallar o cambiar sin aviso.
 - **Cerca de mí** (geolocalización del navegador) y **Elegir punto** (tocar el
   mapa; el pin se puede arrastrar): lista los 5 camiones más cercanos. Ninguna
   de las dos ubicaciones sale del navegador.
+- **Reportar recolección**: desde la lista de cercanos, una guía para reportar
+  por GuaZap (WhatsApp del Ayuntamiento) que el camión no pasó u otra falla,
+  con las respuestas del menú listas para copiar. Solo abre WhatsApp; el
+  reporte lo envía la persona.
 - Modo claro y oscuro según el sistema; pensada para celular.
 
 ## Uso
