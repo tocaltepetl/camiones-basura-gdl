@@ -17,6 +17,8 @@
 <meta property="og:image:alt" content="Logo de Camiones GDL: un camión recolector sobre un cerro con agua">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#0b7a4b">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.css">
 <style>
 :root{--bg:#f6f7f9;--fg:#1b1f24;--muted:#5d6670;--card:#fff;--line:#d9dde3;--acc:#0b7a4b;--on-acc:#fff;--old:#9aa1a9;--warn:#b25b00}
@@ -34,6 +36,28 @@ h1{font-size:16px;margin:0 auto 0 0}
 button{font:inherit;font-size:14px;padding:6px 12px;border-radius:8px;border:1px solid var(--acc);background:var(--acc);color:var(--on-acc);cursor:pointer}
 button.sec{background:transparent;color:var(--fg);border-color:var(--line)}
 button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
+/* Menú «Más» y botones grandes para dedos (ver PR de UX) */
+.more{position:relative}
+.more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;min-width:220px;display:flex;flex-direction:column;padding:6px;border-radius:12px;background:var(--card);box-shadow:0 4px 18px #0005,0 0 0 1px var(--line)}
+.more-menu[hidden]{display:none}
+.more-menu button,.more-menu a{display:flex;align-items:center;gap:6px;text-align:left;background:none;border:0;color:var(--fg);padding:10px;border-radius:8px;text-decoration:none;font-size:15px}
+.more-menu button:hover,.more-menu a:hover,.more-menu .active{background:var(--bg)}
+@media (pointer:coarse){button,.more-menu a{min-height:44px}.near-head button{min-height:40px}#near li{padding:8px 0}}
+@media (max-width:480px){h1{font-size:15px;flex-basis:calc(100% - 80px)}header{gap:6px;padding:8px 12px}header>.pill{order:1;flex-basis:100%;text-align:center}header>button{flex:1;white-space:nowrap;padding:8px 6px}.more{order:0}.long{display:none}}
+/* Bienvenida, leyenda y mapa vacío */
+.welcome{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;padding:16px;background:#0006}
+.welcome[hidden],.empty[hidden]{display:none}
+.welcome>div{width:min(380px,100%);background:var(--card);border-radius:14px;padding:16px 18px;box-shadow:0 6px 28px #0007}
+.welcome h2{font-size:17px;margin:0 0 8px}.welcome ul{margin:0 0 12px;padding-left:0;list-style:none}
+.welcome li{display:flex;gap:10px;align-items:center;margin:10px 0}
+.welcome button{width:100%;padding:10px;font-weight:600}
+.legend{font:12px/1.3 system-ui,sans-serif;color:var(--fg);background:color-mix(in srgb,var(--card) 88%,transparent);border-radius:10px;padding:5px 9px;box-shadow:0 0 0 1px var(--line);display:flex;flex-direction:column;gap:3px}
+.lg{flex:none;display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-2px;border:2px solid #fff;box-shadow:0 0 0 1px #0003}
+.lg.line{height:4px;border:0;border-radius:2px;width:14px;vertical-align:2px;box-shadow:none;background:var(--acc);opacity:.7}
+.empty{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:3;width:min(360px,calc(100vw - 32px));padding:10px 14px;border-radius:12px;background:var(--card);box-shadow:0 2px 12px #0005,0 0 0 1px var(--line);font-size:14px;text-align:center}
+.near-sum{margin:6px 0 2px;font-size:15px}
+.tag{font-size:12px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);margin-left:4px}
+.tag.in{border-color:var(--acc);color:var(--acc);font-weight:600}
 #map{flex:1;min-height:0;background:var(--bg)}
 #near{display:none;max-height:35vh;overflow:auto;background:var(--card);border-top:1px solid var(--line);padding:8px 16px}
 #near ol{margin:4px 0;padding-left:22px}#near li{cursor:pointer;padding:2px 0}
@@ -62,8 +86,14 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .opt input{vertical-align:middle;margin:0 6px 0 0;width:16px;height:16px}
 .hint{color:var(--muted)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.truck{display:flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 5px;border-radius:14px;background:var(--acc);color:var(--on-acc);font:600 12px system-ui;border:2px solid #fff;box-shadow:0 1px 4px #0006;cursor:pointer}
-.truck.old{background:var(--old);color:#fff}
+.truck{position:relative;width:34px;height:34px;cursor:pointer}
+.truck .body{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--acc);color:var(--on-acc);border:2px solid #fff;box-shadow:0 1px 4px #0006}
+/* Flecha que gira hacia donde va el camión; oculta si aún no se sabe */
+.truck .dir{position:absolute;inset:-9px;pointer-events:none}
+.truck .dir::before{content:"";position:absolute;left:50%;top:0;transform:translateX(-50%);border:6px solid transparent;border-top:0;border-bottom:9px solid var(--acc);filter:drop-shadow(0 -1px 0 #fff)}
+.truck:not(.moving) .dir{display:none}
+.truck.old .body{background:var(--old);color:#fff;opacity:.75}
+.truck.old .dir::before{border-bottom-color:var(--old)}
 .me{width:16px;height:16px;border-radius:50%;background:#2a7fff;border:3px solid #fff;box-shadow:0 0 0 2px #2a7fff66}
 /* Ficha para reportar por GuaZap */
 .near-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -113,15 +143,29 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 <body>
 <header>
   <h1><img src="favicon.svg" alt="" width="22" height="22" style="vertical-align:-3px"> Camiones de basura GDL</h1>
-  <span class="pill"><span id="dot" class="dot"></span><span id="conn">Conectando…</span></span>
-  <a class="pill repo" href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener" title="Código fuente en GitHub (se abre en otra pestaña)" aria-label="Código fuente en GitHub (se abre en otra pestaña)"><svg class="gh" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg> GitHub <span aria-hidden="true">↗</span></a>
-  <span class="pill"><b id="count">0</b> en el mapa</span>
-  <button id="btnNear">Cerca de mí</button>
-  <button id="btnPick" class="sec">Elegir punto</button>
-  <button id="btnHeat" class="sec" aria-pressed="false" title="Mapa de calor de los reportes hechos con esta guía">Reportes</button>
-  <button id="btnReportTop" class="report-btn" title="Reportar por WhatsApp (GuaZap) que el camión no pasó u otra falla">⚠ ¿No pasó el camión? Repórtalo</button>
+  <span class="pill"><span id="dot" class="dot"></span><span id="conn">Conectando…</span><span id="countWrap" hidden> · <b id="count">0</b> <span id="countLbl">camiones</span></span></span>
+  <button id="btnNear">📍 Cerca de mí</button>
+  <button id="btnReportTop" class="report-btn" title="Reportar por WhatsApp (GuaZap) que el camión no pasó u otra falla">⚠ <span class="long">¿No pasó? </span>Repórtalo</button>
+  <div class="more"><button id="btnMore" class="sec" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu">Más ▾</button>
+    <div id="moreMenu" class="more-menu" hidden>
+      <button id="btnPick" type="button">🗺️ Ver camiones cerca de otro lugar</button>
+      <button id="btnHeat" type="button" aria-pressed="false">🔥 Mapa de reportes</button>
+      <button id="btnHelp" type="button">❔ ¿Cómo funciona?</button>
+      <a href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg> Código en GitHub ↗</a>
+    </div></div>
 </header>
 <div id="mapWrap"><div id="map"></div>
+<div id="empty" class="empty" role="status" hidden>Ahora no hay camiones circulando en esta zona. Prueba alejando el mapa o vuelve más tarde.</div>
+<div id="welcome" class="welcome" hidden><div role="dialog" aria-labelledby="welTitle">
+  <h2 id="welTitle">¿Dónde va el camión de la basura?</h2>
+  <ul>
+    <li><span class="lg" style="background:var(--acc)"></span><span>Cada círculo verde es un camión recolector, <b>en vivo</b>. La flechita indica hacia dónde va.</span></li>
+    <li><span class="lg" style="background:var(--old)"></span><span>Los grises llevan unos minutos sin mandar su ubicación.</span></li>
+    <li><span aria-hidden="true">👆</span><span>Toca un camión para ver su número de ruta.</span></li>
+    <li><span aria-hidden="true">📍</span><span>Usa <b>Cerca de mí</b> para saber cuál te queda más cerca y si viene hacia ti.</span></li>
+  </ul>
+  <button type="button" id="welOk">Entendido</button>
+</div></div>
 <!-- Mapa de calor de reportes (issue #14). -->
 <div id="heat" hidden aria-labelledby="heatTitle" role="region">
   <div class="card-head"><strong id="heatTitle">Reportes hechos con esta guía</strong><button type="button" class="card-x" id="heatClose" aria-label="Cerrar">✕</button></div>
@@ -175,6 +219,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   </div>
   <p id="rThanks" class="r-thanks" hidden>¡Gracias! Con esto mejoramos la guía.</p>
 </dialog>
+<div id="legend" class="legend maplibregl-ctrl" aria-label="Leyenda"><span><span class="lg" style="background:var(--acc)"></span>En vivo</span><span><span class="lg" style="background:var(--old)"></span>Sin señal reciente</span><span><span class="lg line"></span>Recorrido reciente</span></div>
 <!-- Info flotante sobre el mapa (abajo a la izquierda). Solo se abre al tocarla. -->
 <div id="infoCtl" class="info-ctl maplibregl-ctrl">
   <div id="aboutCard" class="about-card" role="dialog" aria-labelledby="aboutTitle" hidden>
@@ -185,7 +230,8 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
     <p>Mapa en vivo, <strong>no oficial</strong>, de los camiones de basura de Guadalajara. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso.</p>
     <p>Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado. Si reportas con la guía, contamos de forma anónima el tipo de falla y una zona de ~500 m (puedes desactivarlo en la ficha).</p>
     <p>¿No pasó el camión o hubo un problema? Usa <strong>«Repórtalo»</strong> (arriba) para enviarlo por GuaZap, el WhatsApp de reportes del Ayuntamiento.</p>
-    <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso <span class="hint">(ahorra datos y no carga al servidor de origen)</span></label>
+    <p>Puedes agregar este mapa a la pantalla de inicio de tu celular desde el menú del navegador («Agregar a la pantalla principal» o «Instalar app»).</p>
+    <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso <span class="hint">(ahorra datos de tu celular)</span></label>
     <p class="card-links"><a href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener" class="gh-link"><svg class="gh" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg>Ver en GitHub ↗</a> · <a href="https://github.com/tocaltepetl/camiones-basura-gdl/issues/new/choose" target="_blank" rel="noopener">Reportar un problema</a> ·
       <a class="ver" href="https://github.com/tocaltepetl/camiones-basura-gdl/releases" target="_blank" rel="noopener">dev</a></p> <!-- version: se reemplaza al desplegar -->
   </div>
@@ -282,7 +328,6 @@ const pt = p => {
   const lng = parseFloat(p[0]), lat = parseFloat(p[1]);
   return Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? [lng, lat] : null;
 };
-const hhmm = t => new Date(t).toLocaleTimeString("es-MX", {hour: "2-digit", minute: "2-digit", second: "2-digit"});
 
 function onTruckMessage(channel, d) {
   const m = d && d.message; if (!m) return;
@@ -293,6 +338,8 @@ function onTruckMessage(channel, d) {
   let t = trucks.get(channel);
   if (!t) {
     const el = document.createElement("div"); el.className = "truck";
+    el.innerHTML = `<div class="dir"></div><div class="body">${TRUCK_SVG}</div>`;
+    el.setAttribute("role", "button");
     t = {el, old: false};
     t.popup = new maplibregl.Popup({offset: POPUP_OFFSET_PX, closeButton: true});
     t.popup.on("open", () => t.popup.setHTML(popup(t)));
@@ -300,16 +347,34 @@ function onTruckMessage(channel, d) {
     trucks.set(channel, t);
   }
   t.route = route; t.pos = pos; t.trail = trail.length ? trail : [pos]; t.last = Date.now();
-  t.el.textContent = route;
+  t.el.setAttribute("aria-label", `Camión de la ruta ${route}`);
+  const h = heading(t.trail); t.heading = h;
+  t.el.classList.toggle("moving", h != null);
+  if (h != null) t.el.querySelector(".dir").style.transform = `rotate(${h}deg)`;
   t.marker.setLngLat(pos);
   if (t.old) setOld(t, false);
   if (t.popup.isOpen()) t.popup.setHTML(popup(t));
   refreshTrails(); updateCount();
 }
+// Camión de lado (se lee mejor que uno visto desde arriba); la dirección la da la flecha.
+const TRUCK_SVG = `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M2 6.5A1.5 1.5 0 0 1 3.5 5h10A1.5 1.5 0 0 1 15 6.5V8h3.2a1.5 1.5 0 0 1 1.2.6l2.3 3.1c.2.3.3.6.3.9V16a1 1 0 0 1-1 1h-1a2.5 2.5 0 0 1-5 0H9a2.5 2.5 0 0 1-5 0H3a1 1 0 0 1-1-1zM15 10v2.5h5l-1.9-2.5zM6.5 18.2a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4m10 0a1.2 1.2 0 1 0 0-2.4 1.2 1.2 0 0 0 0 2.4"/></svg>`;
+const HEADING_MIN_M = 15;   // menos que esto entre puntos es ruido del GPS
+// Rumbo en grados (0 = norte, sentido horario) del último tramo de al menos HEADING_MIN_M; null si no se ha movido.
+function heading(trail) {
+  const b = trail[trail.length - 1];
+  for (let i = trail.length - 2; i >= 0; i--) {
+    const a = trail[i];
+    if (dist(a, b) < HEADING_MIN_M) continue;
+    const r = Math.PI / 180, dLo = (b[0] - a[0]) * r;
+    const y = Math.sin(dLo) * Math.cos(b[1] * r);
+    const x = Math.cos(a[1] * r) * Math.sin(b[1] * r) - Math.sin(a[1] * r) * Math.cos(b[1] * r) * Math.cos(dLo);
+    return (Math.atan2(y, x) / r + 360) % 360;
+  }
+  return null;
+}
+const agoText = ms => { const s = Math.round(ms / SECOND); return s < 60 ? "hace unos segundos" : s < 3600 ? `hace ${Math.round(s / 60)} min` : "hace más de una hora"; };
 function popup(t) {
-  const age = Math.round((Date.now() - t.last) / SECOND);
-  const ago = age < 60 ? `hace ${age} s` : `hace ${Math.round(age / 60)} min`;
-  let s = `<b>Ruta ${esc(t.route)}</b><br>Último mensaje: ${hhmm(t.last)} (${ago})`;
+  let s = `<b>Ruta ${esc(t.route)}</b><br>${t.old ? "Sin señal reciente; " : ""}ubicación actualizada ${agoText(Date.now() - t.last)}`;
   if (me) s += `<br>A ${fmtDist(dist(me, t.pos))} ${refKind === "me" ? "de ti" : "del punto"}`;
   return s;
 }
@@ -326,6 +391,9 @@ setInterval(sweep, SWEEP_MS);
 function updateCount() {
   let n = 0; for (const t of trucks.values()) if (!t.old) n++;
   document.getElementById("count").textContent = n;
+  document.getElementById("countLbl").textContent = n === 1 ? "camión" : "camiones";
+  document.getElementById("countWrap").hidden = !established;
+  checkEmpty();
 }
 
 // ---------- cerca de un punto: mi ubicación o uno elegido en el mapa ----------
@@ -345,7 +413,7 @@ function setPicking(on) {
   picking = on;
   document.getElementById("btnPick").classList.toggle("active", on);
   map.getCanvas().style.cursor = on ? "crosshair" : "";
-  if (on) { nearBox.style.display = "block"; nearBox.textContent = "Toca el mapa para elegir un punto."; }
+  if (on) { nearBox.style.display = "block"; nearBox.textContent = "Toca el mapa en el lugar que quieres revisar (por ejemplo, tu casa o tu trabajo)."; }
 }
 document.getElementById("btnNear").onclick = () => {
   setPicking(false); reopenAfterPick = false;
@@ -357,7 +425,7 @@ document.getElementById("btnNear").onclick = () => {
     if (!meMarker) { const el = document.createElement("div"); el.className = "me"; meMarker = new maplibregl.Marker({element: el}).setLngLat(pos).addTo(map); }
     else meMarker.setLngLat(pos);
     setRef(pos, "me", true);
-  }, e => { nearBox.textContent = "No se pudo obtener tu ubicación (" + e.message + ")."; }, {enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: GEO_MAX_AGE_MS});
+  }, e => { nearBox.innerHTML = (e.code === 1 ? "No diste permiso para usar tu ubicación." : "No pudimos encontrar tu ubicación.") + " Puedes elegir el lugar en el mapa con <b>Más ▾ → Ver camiones cerca de otro lugar</b>."; }, {enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: GEO_MAX_AGE_MS});
 };
 document.getElementById("btnPick").onclick = () => { if (picking) reopenAfterPick = false; setPicking(!picking); };
 map.on("click", e => {
@@ -371,6 +439,16 @@ map.on("click", e => {
   setRef(pos, "pin", false);
   if (reopenAfterPick) { reopenAfterPick = false; openReport(nearestLive()); }
 });
+// ¿Viene hacia el punto? Compara su rumbo con la dirección camión→punto.
+const APPROACH_DEG = 60;
+function bearing(a, b) { return heading([a, b]) ?? null; }
+function trend(t, d) {
+  if (t.old || t.heading == null || d < 80) return null;
+  const toMe = bearing(t.pos, me); if (toMe == null) return null;
+  const diff = Math.abs(((t.heading - toMe + 540) % 360) - 180);
+  return diff < APPROACH_DEG ? "in" : diff > 180 - APPROACH_DEG ? "out" : null;
+}
+const TREND_TXT = {in: "se acerca", out: "se aleja"};
 function setRef(pos, kind, fit) { me = pos; refKind = kind; renderNear(fit); }
 function clearRef() {
   me = refKind = null; nearBox.style.display = "none";
@@ -379,10 +457,14 @@ function clearRef() {
 function renderNear(fit) {
   if (!me) return;
   const list = [...trucks.values()].map(t => ({t, d: dist(me, t.pos)})).sort((a, b) => a.d - b.d).slice(0, NEAR_LIST_SIZE);
-  const title = refKind === "me" ? "Camiones más cercanos a ti" : "Camiones más cercanos al punto (arrástralo para moverlo)";
+  const title = refKind === "me" ? "Camiones cerca de ti" : "Camiones cerca del punto rojo (puedes arrastrarlo)";
+  const live = list.find(x => !x.t.old);
+  let sum = "";
+  if (live) { const tr = trend(live.t, live.d);
+    sum = `<p class="near-sum">El más cercano está a <b>${fmtDist(live.d)}</b>${tr === "in" ? " y <b>viene hacia acá</b>" : tr === "out" ? " y se está alejando" : ""}.</p>`; }
   nearBox.style.display = "block";
-  nearBox.innerHTML = `<div class="near-head"><b>${title}</b><button class="report-btn" id="btnReport">⚠ ¿No pasó? Repórtalo</button><button class="sec" id="closeNear" aria-label="Cerrar">✕</button></div>` +
-    (list.length ? "<ol>" + list.map((x, i) => `<li data-i="${i}">Ruta ${esc(x.t.route)} · ${fmtDist(x.d)} · ${hhmm(x.t.last)}${x.t.old ? " (sin señal)" : ""}</li>`).join("") + "</ol>" : "<p>Aún no hay camiones recibidos.</p>");
+  nearBox.innerHTML = `<div class="near-head"><b>${title}</b><button class="report-btn" id="btnReport">⚠ ¿No pasó? Repórtalo</button><button class="sec" id="closeNear" aria-label="Cerrar">✕</button></div>` + sum +
+    (list.length ? "<ol>" + list.map((x, i) => `<li data-i="${i}">Ruta ${esc(x.t.route)} · a ${fmtDist(x.d)}${(tr => tr ? `<span class="tag ${tr}">${TREND_TXT[tr]}</span>` : "")(trend(x.t, x.d))} · <span class="hint">${x.t.old ? "sin señal reciente" : agoText(Date.now() - x.t.last)}</span></li>`).join("") + "</ol>" : "<p>Todavía no vemos camiones por aquí. Espera unos segundos o aleja el mapa.</p>");
   nearBox.querySelectorAll("li").forEach(li => li.onclick = () => {
     const t = list[+li.dataset.i].t; map.flyTo({center: t.pos, zoom: FOCUS_ZOOM}); if (!t.popup.isOpen()) t.marker.togglePopup();
   });
@@ -662,6 +744,38 @@ map.on("load", () => {
   if (innerWidth < NARROW_PX) document.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
 });
 
+// ---------- menú «Más», bienvenida, leyenda y mapa vacío ----------
+const btnMore = document.getElementById("btnMore"), moreMenu = document.getElementById("moreMenu");
+function setMore(open) { moreMenu.hidden = !open; btnMore.setAttribute("aria-expanded", open); }
+btnMore.onclick = () => setMore(moreMenu.hidden);
+moreMenu.addEventListener("click", e => { if (e.target.closest("button,a")) setMore(false); });
+document.addEventListener("pointerdown", e => { if (!moreMenu.hidden && !e.target.closest(".more")) setMore(false); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !moreMenu.hidden) { setMore(false); btnMore.focus(); } });
+const WELCOME_KEY = "camiones-basura-gdl:bienvenida-v1";
+const welcome = document.getElementById("welcome");
+function setWelcome(open) {
+  welcome.hidden = !open;
+  if (open) document.getElementById("welOk").focus();
+  else try { localStorage.setItem(WELCOME_KEY, "1"); } catch {}
+}
+try { if (!localStorage.getItem(WELCOME_KEY)) setWelcome(true); } catch { setWelcome(true); }
+document.getElementById("welOk").onclick = () => setWelcome(false);
+welcome.onclick = e => { if (e.target === welcome) setWelcome(false); };
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !welcome.hidden) setWelcome(false); });
+document.getElementById("btnHelp").onclick = () => setWelcome(true);
+const legend = document.getElementById("legend");
+map.addControl({onAdd: () => legend, onRemove: () => legend.remove()}, "bottom-right");
+// Aviso de mapa vacío: solo si llevamos un rato en vivo sin ningún camión en la vista.
+const EMPTY_AFTER_MS = 20 * SECOND;
+let emptySince = 0;
+function checkEmpty() {
+  let n = 0; for (const t of trucks.values()) if (!t.old) n++;
+  if (n) emptySince = Date.now();
+  document.getElementById("empty").hidden = !(established && !n && Date.now() - emptySince > EMPTY_AFTER_MS);
+}
+setInterval(checkEmpty, 5 * SECOND);
+map.on("movestart", () => { emptySince = Date.now(); document.getElementById("empty").hidden = true; });
+
 // ---------- pausa por inactividad (se puede desactivar) ----------
 const PAUSE_KEY = "camiones-basura-gdl:pausa-auto";
 const autoPause = document.getElementById("autoPause");
@@ -695,7 +809,7 @@ function connect() {
     let data = m.data; if (typeof data === "string") { try { data = JSON.parse(data); } catch {} }
     switch (m.event) {
       case "pusher:connection_established":
-        retry = 0; established = true; subscribed.clear(); setConn("En vivo", "on");
+        retry = 0; established = true; subscribed.clear(); setConn("En vivo", "on"); emptySince = Date.now();
         syncSubscriptions();
         break;
       case "pusher:ping": send({event: "pusher:pong", data: {}}); break;
@@ -709,11 +823,12 @@ function connect() {
   ws.onclose = e => {
     ws = null; established = false; subscribed.clear(); clearInterval(pingTimer);
     if (DEBUG) console.log("[camiones] close", e.code, e.reason);
-    if (idlePaused) { setConn("En pausa · toca para reanudar"); return; }
+    if (idlePaused) { setConn("En pausa · toca para seguir"); return; }
     if (document.hidden) { setConn("En pausa"); return; }
+    updateCount();
     const wait = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** retry) * (0.5 + Math.random() / 2); // espera creciente; jitter: entre 50 y 100 %
     retry++;
-    setConn(`Reconectando en ${Math.round(wait / SECOND)} s`, "err");
+    setConn("Sin conexión, reintentando…", "err");
     retryTimer = setTimeout(connect, wait);
   };
   ws.onerror = () => { /* onclose se encarga */ };
