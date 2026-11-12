@@ -10,21 +10,64 @@
       "include-v-in-tag": true,
       "pull-request-title-pattern": "chore: publica la versión ${version}",
       "changelog-sections": [
-        {"type": "feat", "section": "Novedades"},
-        {"type": "fix", "section": "Correcciones"},
-        {"type": "perf", "section": "Rendimiento"},
-        {"type": "revert", "section": "Reversiones"},
-        {"type": "docs", "section": "Documentación"},
-        {"type": "refactor", "section": "Mantenimiento", "hidden": true},
-        {"type": "style", "section": "Mantenimiento", "hidden": true},
-        {"type": "test", "section": "Mantenimiento", "hidden": true},
-        {"type": "build", "section": "Mantenimiento", "hidden": true},
-        {"type": "ci", "section": "Mantenimiento", "hidden": true},
-        {"type": "chore", "section": "Mantenimiento", "hidden": true}
+        {
+          "type": "feat",
+          "section": "Novedades"
+        },
+        {
+          "type": "fix",
+          "section": "Correcciones"
+        },
+        {
+          "type": "perf",
+          "section": "Rendimiento"
+        },
+        {
+          "type": "revert",
+          "section": "Reversiones"
+        },
+        {
+          "type": "docs",
+          "section": "Documentación"
+        },
+        {
+          "type": "refactor",
+          "section": "Mantenimiento",
+          "hidden": true
+        },
+        {
+          "type": "style",
+          "section": "Mantenimiento",
+          "hidden": true
+        },
+        {
+          "type": "test",
+          "section": "Mantenimiento",
+          "hidden": true
+        },
+        {
+          "type": "build",
+          "section": "Mantenimiento",
+          "hidden": true
+        },
+        {
+          "type": "ci",
+          "section": "Mantenimiento",
+          "hidden": true
+        },
+        {
+          "type": "chore",
+          "section": "Mantenimiento",
+          "hidden": true
+        }
       ],
       "extra-files": [
-        {"type": "generic", "path": "public/index.html"}
-      ]
+        {
+          "type": "generic",
+          "path": "public/index.html"
+        }
+      ],
+      "initial-version": "0.1.0"
     }
   }
 }

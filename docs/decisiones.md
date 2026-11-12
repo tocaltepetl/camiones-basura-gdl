@@ -209,3 +209,16 @@ Al desplegar la prueba, Wrangler registró el subdominio de `workers.dev` de la
 cuenta con el nombre de la carpeta temporal (`cbg-deploy`). Aparece en las URLs
 de vista previa; se puede cambiar en el panel (Workers & Pages → Settings →
 Subdomain).
+
+### Correcciones tras el primer PR de versión (2026-11-12)
+- release-please propuso **1.0.0**: sin releases previos usa su versión
+  inicial por defecto e ignora el manifiesto. Se fija `initial-version: 0.1.0`.
+- El ícono de la marca (`assets/brand/`) quedó fuera de `public/`, así que no
+  se publicaría. Se copia a `public/favicon.svg` (revisado: SVG sin scripts ni
+  referencias externas); `assets/brand/` queda como fuente de la marca, sin
+  publicar.
+- Identidad visual (hecha en otra sesión, portada aquí para no publicar una
+  versión a medias): logos y versiones horizontales en `assets/brand/`
+  (fuente, no se publica), `public/favicon.svg` y `public/og.png` (1200×630)
+  con etiquetas Open Graph/Twitter hacia `https://basuragdl.tocaltepetl.org/`.
+  Las etiquetas originales apuntaban a GitHub Pages, que no se usa.
