@@ -87,6 +87,20 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .r-loc{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
 .r-loc button{font-size:13px;padding:4px 10px}
 .r-go{display:block;text-align:center;margin:12px 0 4px;padding:9px 12px;border-radius:8px;background:var(--acc);color:var(--on-acc);text-decoration:none;font-weight:600}
+/* Seguimiento del reporte y mapa de calor (issue #14) */
+.r-opt{display:flex!important;gap:6px;align-items:flex-start;font-weight:400!important;font-size:13px!important;color:var(--muted)}
+#report .r-opt input{width:auto;margin-top:2px}
+#rAfter{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+.r-choices{display:flex;gap:6px;flex-wrap:wrap}
+.r-choices button{font-size:13px;padding:4px 10px}
+.r-thanks{color:var(--acc);font-weight:600}
+#heat{position:absolute;top:8px;right:8px;z-index:2;width:min(300px,calc(100vw - 32px));max-height:calc(100% - 16px);overflow:auto;padding:10px 12px;border-radius:12px;background:var(--card);box-shadow:0 2px 12px #0005,0 0 0 1px var(--line);font-size:14px}
+#heat select{font:inherit;width:100%;padding:4px 6px;margin:2px 0 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+@media (max-width:520px){#heat{max-height:45%}}
+#heat .bar{height:8px;border-radius:4px;margin:4px 0 2px;background:linear-gradient(90deg,#ffe08a,#f59e0b,#dc2626,#7f1d1d)}
+#heat .scale{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+#heat ul{margin:4px 0;padding-left:18px}
+#mapWrap{position:relative;flex:1;min-height:0;display:flex}
 .maplibregl-popup-content{background:var(--card);color:var(--fg);font-size:14px}
 .maplibregl-popup-tip{border-top-color:var(--card)!important;border-bottom-color:var(--card)!important}
 .maplibregl-popup-close-button{color:var(--fg)}
@@ -104,9 +118,19 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   <span class="pill"><b id="count">0</b> en el mapa</span>
   <button id="btnNear">Cerca de mí</button>
   <button id="btnPick" class="sec">Elegir punto</button>
+  <button id="btnHeat" class="sec" aria-pressed="false" title="Mapa de calor de los reportes hechos con esta guía">Reportes</button>
   <button id="btnReportTop" class="report-btn" title="Reportar por WhatsApp (GuaZap) que el camión no pasó u otra falla">⚠ ¿No pasó el camión? Repórtalo</button>
 </header>
-<div id="map"></div>
+<div id="mapWrap"><div id="map"></div>
+<!-- Mapa de calor de reportes (issue #14). -->
+<div id="heat" hidden aria-labelledby="heatTitle" role="region">
+  <div class="card-head"><strong id="heatTitle">Reportes hechos con esta guía</strong><button type="button" class="card-x" id="heatClose" aria-label="Cerrar">✕</button></div>
+  <label for="hKind">Tipo de falla</label><select id="hKind"></select>
+  <label for="hDays">Periodo</label><select id="hDays"><option value="7">Últimos 7 días</option><option value="30">Últimos 30 días</option></select>
+  <div class="bar"></div><div class="scale"><span>pocos</span><span>muchos</span></div>
+  <div id="hSum">Cargando…</div>
+  <p class="hint">Cuenta quién tocó «Abrir GuaZap» desde aquí, no el total de reportes al Ayuntamiento. Zonas de ~500 m; las que tienen menos de <span id="hMin">5</span> reportes no se muestran.</p>
+</div></div>
 <div id="near"></div>
 <!-- Ficha para reportar fallas de recolección por GuaZap (WhatsApp del Ayuntamiento). -->
 <dialog id="report" aria-labelledby="reportTitle">
@@ -124,8 +148,31 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   <ol id="rSteps"></ol>
   <div id="rLocBox"><label>Si te pide la ubicación</label><div class="r-loc" id="rLoc"></div></div>
   <div id="rNoPin" class="r-nopin">Marca en el mapa dónde no pasó el camión para tener la ubicación lista para copiar.<br><button type="button" class="sec" id="rPick">Elegir punto en el mapa</button></div>
+  <label class="r-opt"><input type="checkbox" id="rCount" checked><span>Contar mi reporte de forma anónima en el <a href="#" id="rSeeHeat">mapa de reportes</a>: solo el tipo de falla, el municipio y una zona de ~500 m, nunca tu ubicación exacta ni datos tuyos.</span></label>
   <a class="r-go" id="rGo" target="_blank" rel="noopener">Abrir GuaZap en WhatsApp ↗</a>
-  <p class="hint">Este mapa no es oficial: solo abre WhatsApp. El reporte lo envías tú y nada sale de este navegador hasta que lo mandes. Al terminar, GuaZap te da un folio para darle seguimiento.</p>
+  <p class="hint">Este mapa no es oficial: solo abre WhatsApp. El reporte lo envías tú. Al terminar, GuaZap te da un folio para darle seguimiento.</p>
+  <div id="rAfter" hidden>
+    <label>¿Cómo te fue?</label>
+    <div class="r-choices" id="rRes">
+      <button type="button" class="sec" data-r="folio">Me dieron folio</button>
+      <button type="button" class="sec" data-r="sin-folio">Terminé sin folio</button>
+      <button type="button" class="sec" data-r="atorado">Me atoré</button>
+    </div>
+    <label for="rSame">¿El bot preguntó lo mismo que estos pasos?</label>
+    <select id="rSame">
+      <option value="igual">Sí, igual</option>
+      <option value="menu">No: el menú o las opciones eran otras</option>
+      <option value="foto">No: pidió una foto</option>
+      <option value="direccion">No: pidió la dirección escrita</option>
+      <option value="ubicacion">No: pidió la ubicación de WhatsApp</option>
+      <option value="datos">No: pidió nombre, teléfono u otros datos míos</option>
+      <option value="otro">No: otra cosa</option>
+    </select>
+    <div id="rStepBox" hidden><label for="rStep">¿En qué paso?</label><select id="rStep"></select></div>
+    <button type="button" id="rSend" style="margin-top:10px">Enviar</button>
+    <p class="hint">Con esto corregimos los pasos de cada municipio y tipo de falla. Si quieres contar más, <a href="https://github.com/tocaltepetl/camiones-basura-gdl/issues/new/choose" target="_blank" rel="noopener">abre un reporte en GitHub</a> (sin datos personales).</p>
+  </div>
+  <p id="rThanks" class="r-thanks" hidden>¡Gracias! Con esto mejoramos la guía.</p>
 </dialog>
 <!-- Info flotante sobre el mapa (abajo a la izquierda). Solo se abre al tocarla. -->
 <div id="infoCtl" class="info-ctl maplibregl-ctrl">
@@ -135,7 +182,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
       <button type="button" class="card-x" id="aboutClose" aria-label="Cerrar">✕</button>
     </div>
     <p>Mapa en vivo, <strong>no oficial</strong>, de los camiones de basura de Guadalajara. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso.</p>
-    <p>Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado.</p>
+    <p>Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado. Si reportas con la guía, contamos de forma anónima el tipo de falla y una zona de ~500 m (puedes desactivarlo en la ficha).</p>
     <p>¿No pasó el camión o hubo un problema? Usa <strong>«Repórtalo»</strong> (arriba) para enviarlo por GuaZap, el WhatsApp de reportes del Ayuntamiento.</p>
     <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso <span class="hint">(ahorra datos y no carga al servidor de origen)</span></label>
     <p class="card-links"><a href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener" class="gh-link"><svg class="gh" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg>Ver en GitHub ↗</a> · <a href="https://github.com/tocaltepetl/camiones-basura-gdl/issues/new/choose" target="_blank" rel="noopener">Reportar un problema</a> ·
@@ -413,7 +460,7 @@ function renderReport() {
       `<button type="button" class="sec" data-copy="https://www.google.com/maps?q=${me[1].toFixed(6)},${me[0].toFixed(6)}">Copiar enlace de mapa</button>`;
   }
 }
-function openReport(truck) { reportTruck = truck || null; renderReport(); report.showModal(); }
+let openReport = function (truck) { reportTruck = truck || null; renderReport(); report.showModal(); };
 report.addEventListener("click", e => {
   const b = e.target.closest("[data-copy]"); if (b) copyText(b.dataset.copy, b);
   else if (e.target === report) {   // el fondo también cuenta como el <dialog>: revisa que el clic quede fuera
@@ -425,6 +472,115 @@ for (const el of [rMun, rKind, rDays]) el.addEventListener("input", renderReport
 document.getElementById("reportClose").onclick = () => report.close();
 document.getElementById("btnReportTop").onclick = () => openReport(nearestLive());
 document.getElementById("rPick").onclick = () => { report.close(); setPicking(true); reopenAfterPick = true; };
+
+// ---------- conteo anónimo y seguimiento del reporte (issue #14) ----------
+// Al tocar «Abrir GuaZap» se manda un evento con el municipio, el tipo de falla,
+// los días y, si hay punto, la celda de la cuadrícula (nunca la coordenada).
+// Al volver a la pestaña se pregunta cómo le fue. Ver src/worker.js.
+const API_OK = /^https?:$/.test(location.protocol);   // con file:// no hay servidor
+const REPORT_CELL_DEG = 0.005;            // ~550 m; debe coincidir con CELL_DEG del Worker
+const COUNT_KEY = "camiones-basura-gdl:contar-reportes";
+const rCount = document.getElementById("rCount"), rAfter = document.getElementById("rAfter");
+const rSame = document.getElementById("rSame"), rStep = document.getElementById("rStep");
+try { rCount.checked = localStorage.getItem(COUNT_KEY) !== "no"; } catch {}
+rCount.onchange = () => { try { localStorage.setItem(COUNT_KEY, rCount.checked ? "si" : "no"); } catch {} };
+let sent = null;   // lo que se mandó al abrir GuaZap, para el seguimiento
+let rRes = null, askedAfter = false;
+function sendEvent(ev) {
+  if (!API_OK || !rCount.checked) return;
+  try { navigator.sendBeacon("/api/evento", new Blob([JSON.stringify(ev)], {type: "application/json"})); } catch {}
+}
+document.getElementById("rGo").addEventListener("click", () => {
+  const ev = {t: "abrir", mun: GUAZAP_MUNIS.indexOf(rMun.value), k: +rKind.value};
+  if (ev.k === 1) ev.d = Math.max(1, Math.round(+rDays.value) || 1);
+  if (me) ev.c = [Math.floor(me[1] / REPORT_CELL_DEG), Math.floor(me[0] / REPORT_CELL_DEG)];
+  sendEvent(ev);
+  sent = ev; rRes = null;
+  // Pasos tal como se mostraron, para preguntar en cuál cambió el bot.
+  rStep.innerHTML = [...document.querySelectorAll("#rSteps li")].map((li, i) => `<option value="${i + 1}">${i + 1}. ${esc(li.textContent.replace(/Copiado ✓|Copiar/g, "").trim().slice(0, 60))}</option>`).join("");
+  document.querySelectorAll("#rRes button").forEach(b => b.classList.remove("active"));
+  rSame.value = "igual"; updateAfter();
+  rAfter.hidden = false; document.getElementById("rThanks").hidden = true; askedAfter = false;
+});
+function updateAfter() {
+  document.getElementById("rStepBox").hidden = rSame.value === "igual" && rRes !== "atorado";
+  document.getElementById("rSend").disabled = !rRes;
+}
+document.getElementById("rRes").onclick = e => {
+  const b = e.target.closest("[data-r]"); if (!b) return;
+  rRes = b.dataset.r;
+  document.querySelectorAll("#rRes button").forEach(x => x.classList.toggle("active", x === b));
+  updateAfter();
+};
+rSame.onchange = updateAfter;
+document.getElementById("rSend").onclick = () => {
+  const ev = {...sent, t: "resultado", r: rRes, q: rSame.value};
+  if (!document.getElementById("rStepBox").hidden) ev.p = +rStep.value;
+  sendEvent(ev);
+  sent = null;
+  rAfter.hidden = true; document.getElementById("rThanks").hidden = false;
+};
+// Al volver de WhatsApp, reabrimos la ficha para el seguimiento.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && sent && !askedAfter && !report.open) {   // solo una vez
+    askedAfter = true; report.showModal(); rAfter.scrollIntoView({block: "nearest"});
+  }
+});
+// Al abrir la ficha para un reporte nuevo se esconde el seguimiento anterior.
+const openReportBase = openReport;
+openReport = truck => { if (!sent) { rAfter.hidden = true; document.getElementById("rThanks").hidden = true; } openReportBase(truck); };
+
+// ---------- mapa de calor de reportes ----------
+const heat = document.getElementById("heat"), hKind = document.getElementById("hKind"), hDays = document.getElementById("hDays");
+const btnHeat = document.getElementById("btnHeat");
+hKind.innerHTML = `<option value="0">Todos</option>` + GUAZAP_KINDS.map((k, i) => `<option value="${i + 1}">${esc(k)}</option>`).join("");
+let heatData = null;
+const HEAT_SRC = "reportes";
+function heatGeo() {
+  return {type: "FeatureCollection", features: (heatData ? heatData.celdas : []).map(c => ({type: "Feature", properties: {n: c.n}, geometry: {type: "Point", coordinates: c.c}}))};
+}
+function addHeatLayer() {   // también tras cambiar de estilo (claro/oscuro), que borra las capas
+  if (heat.hidden || !map.isStyleLoaded() || map.getSource(HEAT_SRC)) return;
+  const max = Math.max(1, ...(heatData ? heatData.celdas.map(c => c.n) : [1]));
+  map.addSource(HEAT_SRC, {type: "geojson", data: heatGeo()});
+  map.addLayer({id: HEAT_SRC, type: "heatmap", source: HEAT_SRC, paint: {
+    "heatmap-weight": ["/", ["get", "n"], max],
+    "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 10, 1, 15, 2],
+    "heatmap-radius": ["interpolate", ["exponential", 2], ["zoom"], 10, 12, 13, 40, 16, 200],   // ~una celda
+    "heatmap-opacity": 0.75,
+    "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], 0, "rgba(255,224,138,0)", 0.2, "#ffe08a", 0.45, "#f59e0b", 0.7, "#dc2626", 1, "#7f1d1d"],
+  }});
+}
+function removeHeatLayer() { if (map.getLayer(HEAT_SRC)) map.removeLayer(HEAT_SRC); if (map.getSource(HEAT_SRC)) map.removeSource(HEAT_SRC); }
+map.on("style.load", addHeatLayer);
+async function loadHeat() {
+  const hSum = document.getElementById("hSum");
+  if (!API_OK) { hSum.textContent = "El mapa de reportes solo funciona en el sitio publicado."; return; }
+  hSum.textContent = "Cargando…";
+  try {
+    const r = await fetch(`/api/reportes?dias=${hDays.value}&k=${hKind.value}`);
+    if (!r.ok) throw new Error(r.status);
+    heatData = await r.json();
+  } catch (e) { hSum.textContent = "No se pudieron cargar los reportes."; return; }
+  document.getElementById("hMin").textContent = heatData.minCelda;
+  const k = +hKind.value;
+  const total = heatData.porTipo.filter(x => !k || x.k === k).reduce((a, x) => a + x.n, 0);
+  const res = heatData.resultados, answered = (res.folio || 0) + (res["sin-folio"] || 0) + (res.atorado || 0);
+  const byKind = k ? "" : "<ul>" + GUAZAP_KINDS.map((name, i) => [name, heatData.porTipo.filter(x => x.k === i + 1).reduce((a, x) => a + x.n, 0)])
+    .filter(x => x[1]).sort((a, b) => b[1] - a[1]).map(([name, n]) => `<li>${esc(name)}: <b>${n}</b></li>`).join("") + "</ul>";
+  hSum.innerHTML = `<p><b>${total}</b> ${total === 1 ? "persona abrió" : "personas abrieron"} GuaZap desde aquí.</p>` + byKind +
+    (answered ? `<p>De ${answered} que nos contaron cómo les fue, <b>${Math.round(100 * (res.folio || 0) / answered)} %</b> obtuvo folio.</p>` : "") +
+    (heatData.celdas.length ? "" : `<p class="hint">Todavía no hay zonas con suficientes reportes para mostrarlas.</p>`);
+  removeHeatLayer(); addHeatLayer();
+}
+function setHeat(on) {
+  heat.hidden = !on; btnHeat.classList.toggle("active", on); btnHeat.setAttribute("aria-pressed", on);
+  if (on) loadHeat(); else removeHeatLayer();
+}
+btnHeat.onclick = () => setHeat(heat.hidden);
+document.getElementById("heatClose").onclick = () => setHeat(false);
+document.getElementById("rSeeHeat").onclick = e => { e.preventDefault(); report.close(); setHeat(true); };
+hKind.onchange = hDays.onchange = loadHeat;
 function nearestLive() {
   if (!me) return null;
   let best = null, bd = Infinity;
