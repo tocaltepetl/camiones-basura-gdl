@@ -26,6 +26,9 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 #map{flex:1;min-height:0;background:var(--bg)}
 #near{display:none;max-height:35vh;overflow:auto;background:var(--card);border-top:1px solid var(--line);padding:8px 16px}
 #near ol{margin:4px 0;padding-left:22px}#near li{cursor:pointer;padding:2px 0}
+.opt{display:block;margin-top:4px;cursor:pointer}
+.opt input{vertical-align:middle;margin:0 4px 0 0}
+#conn{cursor:default}
 footer{font-size:12px;color:var(--muted);padding:6px 16px calc(6px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
 .truck{display:flex;align-items:center;justify-content:center;min-width:28px;height:28px;padding:0 5px;border-radius:14px;background:var(--acc);color:var(--on-acc);font:600 12px system-ui;border:2px solid #fff;box-shadow:0 1px 4px #0006;cursor:pointer}
 .truck.old{background:var(--old);color:#fff}
@@ -43,29 +46,65 @@ footer{font-size:12px;color:var(--muted);padding:6px 16px calc(6px + env(safe-ar
 <header>
   <h1><img src="assets/brand/camiones-gdl-favicon.svg" alt="" width="22" height="22" style="vertical-align:-3px"> Camiones de basura GDL</h1>
   <span class="pill"><span id="dot" class="dot"></span><span id="conn">Conectando…</span></span>
-  <span class="pill"><b id="count">0</b> activos</span>
+  <span class="pill"><b id="count">0</b> en el mapa</span>
   <button id="btnNear">Cerca de mí</button>
   <button id="btnPick" class="sec">Elegir punto</button>
 </header>
 <div id="map"></div>
 <div id="near"></div>
-<footer>No oficial. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso. Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado.</footer>
+<footer>No oficial. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso. Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado.
+  <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso (ahorra datos y no carga al servidor)</label></footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.24.0/maplibre-gl.js"></script>
 <script>
 "use strict";
 const WS_URL = "wss://workspace.guadalajara.gob.mx/socket/app/6cnmouj20xedzawxb98f?protocol=7&client=js&version=8.4.0&flash=false";
-const CHANNELS = Array.from({length: 250}, (_, i) => "geocerca." + (i + 1));
-const STALE_MS = 5 * 60 * 1000;      // gris tras 5 min sin mensajes
-const DROP_MS = 30 * 60 * 1000;      // se quita del mapa tras 30 min
-const DEBUG = new URLSearchParams(location.search).has("debug");
+const PARAMS = new URLSearchParams(location.search);
+const DEBUG = PARAMS.has("debug");
+const SECOND = 1000, MINUTE = 60 * SECOND;
+
+// ---------- configuración ----------
+// Fuente
+const CHANNEL_COUNT = 250;                 // canales geocerca.1…N que existen (≈150 con camión)
+const ACTIVITY_TIMEOUT_MS = 60 * SECOND;   // sin tráfico → mandamos ping (el servidor corta a los 90 s)
+const PING_CHECK_MS = 10 * SECOND;
+const RETRY_BASE_MS = 1 * SECOND;          // reconexión: 1 s, 2 s, 4 s… hasta el máximo
+const RETRY_MAX_MS = 60 * SECOND;
+// Camiones
+const STALE_MS = 5 * MINUTE;               // gris tras 5 min sin mensajes
+const DROP_MS = 30 * MINUTE;               // se quita del mapa tras 30 min
+const SWEEP_MS = 15 * SECOND;              // cada cuánto se revisan los dos anteriores
+// Carga: suscribirse solo a lo visible
+const VIEW_MARGIN = 0.5;                   // la vista se amplía 50 % por lado al decidir qué escuchar
+const SYNC_DEBOUNCE_MS = 600;              // espera tras mover el mapa antes de (des)suscribir
+const AREAS_SAVE_MS = 30 * SECOND;         // cada cuánto se guardan las áreas de ruta aprendidas
+// Carga: pausa por inactividad (?debug&idle=SEG para probarla)
+const IDLE_MS = (DEBUG && +PARAMS.get("idle") * SECOND) || 10 * MINUTE;
+const IDLE_CHECK_MS = Math.min(30 * SECOND, IDLE_MS / 4);
+// Mapa
+const START_CENTER = [-103.3496, 20.6597];  // Guadalajara [lng, lat]
+const START_ZOOM = 11.5;
+const FOCUS_ZOOM = 16;                     // al enfocar un camión o un punto
+const FIT_PADDING_PX = 50;
+const POPUP_OFFSET_PX = 18;
+// Cercanos
+const NEAR_LIST_SIZE = 5;                  // camiones en la lista
+const NEAR_FIT_COUNT = 3;                  // cuántos de ellos se encuadran junto al punto
+const NEAR_REFRESH_MS = 15 * SECOND;
+const GEO_TIMEOUT_MS = 15 * SECOND;
+const GEO_MAX_AGE_MS = 1 * MINUTE;
+const EARTH_RADIUS_M = 6371000;
+const WS_NORMAL_CLOSURE = 1000;           // código estándar de cierre normal de WebSocket
+const DEBUG_LOG_MS = 10 * SECOND;
+
+const CHANNELS = Array.from({length: CHANNEL_COUNT}, (_, i) => "geocerca." + (i + 1));
 // Coordenadas internas siempre [lng, lat], como MapLibre y como la fuente.
 
 // ---------- mapa (OpenFreeMap: teselas vectoriales, sin API key) ----------
 const dark = matchMedia("(prefers-color-scheme: dark)");
 const styleUrl = () => "https://tiles.openfreemap.org/styles/" + (dark.matches ? "dark" : "positron");
 const map = new maplibregl.Map({
-  container: "map", style: styleUrl(), center: [-103.3496, 20.6597], zoom: 11.5,
+  container: "map", style: styleUrl(), center: START_CENTER, zoom: START_ZOOM,
   attributionControl: {compact: true}
 });
 map.addControl(new maplibregl.NavigationControl({showCompass: false}), "top-left");
@@ -114,7 +153,7 @@ function onTruckMessage(channel, d) {
   if (!t) {
     const el = document.createElement("div"); el.className = "truck";
     t = {el, old: false};
-    t.popup = new maplibregl.Popup({offset: 18, closeButton: true});
+    t.popup = new maplibregl.Popup({offset: POPUP_OFFSET_PX, closeButton: true});
     t.popup.on("open", () => t.popup.setHTML(popup(t)));
     t.marker = new maplibregl.Marker({element: el}).setLngLat(pos).setPopup(t.popup).addTo(map);
     trucks.set(channel, t);
@@ -127,7 +166,7 @@ function onTruckMessage(channel, d) {
   refreshTrails(); updateCount();
 }
 function popup(t) {
-  const age = Math.round((Date.now() - t.last) / 1000);
+  const age = Math.round((Date.now() - t.last) / SECOND);
   const ago = age < 60 ? `hace ${age} s` : `hace ${Math.round(age / 60)} min`;
   let s = `<b>Ruta ${esc(t.route)}</b><br>Último mensaje: ${hhmm(t.last)} (${ago})`;
   if (me) s += `<br>A ${fmtDist(dist(me, t.pos))} ${refKind === "me" ? "de ti" : "del punto"}`;
@@ -142,7 +181,7 @@ function sweep() {
   }
   updateCount();
 }
-setInterval(sweep, 15000);
+setInterval(sweep, SWEEP_MS);
 function updateCount() {
   let n = 0; for (const t of trucks.values()) if (!t.old) n++;
   document.getElementById("count").textContent = n;
@@ -154,7 +193,7 @@ let me = null;                      // punto de referencia actual [lng, lat]
 let refKind = null;                 // "me" | "pin"
 let meMarker = null, pinMarker = null, picking = false;
 function dist(a, b) { // haversine, metros; a y b en [lng, lat]
-  const R = 6371000, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
+  const R = EARTH_RADIUS_M, r = Math.PI / 180, dLa = (b[1] - a[1]) * r, dLo = (b[0] - a[0]) * r;
   const h = Math.sin(dLa / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dLo / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
@@ -176,7 +215,7 @@ document.getElementById("btnNear").onclick = () => {
     if (!meMarker) { const el = document.createElement("div"); el.className = "me"; meMarker = new maplibregl.Marker({element: el}).setLngLat(pos).addTo(map); }
     else meMarker.setLngLat(pos);
     setRef(pos, "me", true);
-  }, e => { nearBox.textContent = "No se pudo obtener tu ubicación (" + e.message + ")."; }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 60000});
+  }, e => { nearBox.textContent = "No se pudo obtener tu ubicación (" + e.message + ")."; }, {enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: GEO_MAX_AGE_MS});
 };
 document.getElementById("btnPick").onclick = () => setPicking(!picking);
 map.on("click", e => {
@@ -196,29 +235,91 @@ function clearRef() {
 }
 function renderNear(fit) {
   if (!me) return;
-  const list = [...trucks.values()].map(t => ({t, d: dist(me, t.pos)})).sort((a, b) => a.d - b.d).slice(0, 5);
+  const list = [...trucks.values()].map(t => ({t, d: dist(me, t.pos)})).sort((a, b) => a.d - b.d).slice(0, NEAR_LIST_SIZE);
   const title = refKind === "me" ? "Camiones más cercanos a ti" : "Camiones más cercanos al punto (arrástralo para moverlo)";
   nearBox.style.display = "block";
   nearBox.innerHTML = `<b>${title}</b> <button class="sec" id="closeNear" style="float:right;padding:2px 8px" aria-label="Cerrar">✕</button>` +
     (list.length ? "<ol>" + list.map((x, i) => `<li data-i="${i}">Ruta ${esc(x.t.route)} · ${fmtDist(x.d)} · ${hhmm(x.t.last)}${x.t.old ? " (sin señal)" : ""}</li>`).join("") + "</ol>" : "<p>Aún no hay camiones recibidos.</p>");
   nearBox.querySelectorAll("li").forEach(li => li.onclick = () => {
-    const t = list[+li.dataset.i].t; map.flyTo({center: t.pos, zoom: 16}); if (!t.popup.isOpen()) t.marker.togglePopup();
+    const t = list[+li.dataset.i].t; map.flyTo({center: t.pos, zoom: FOCUS_ZOOM}); if (!t.popup.isOpen()) t.marker.togglePopup();
   });
   document.getElementById("closeNear").onclick = clearRef;
   if (fit) {
     const b = new maplibregl.LngLatBounds(me, me);
-    list.slice(0, 3).forEach(x => b.extend(x.t.pos));
-    map.fitBounds(b, {padding: 50, maxZoom: 16});
+    list.slice(0, NEAR_FIT_COUNT).forEach(x => b.extend(x.t.pos));
+    map.fitBounds(b, {padding: FIT_PADDING_PX, maxZoom: FOCUS_ZOOM});
   }
 }
-setInterval(() => { if (me && nearBox.style.display !== "none" && !picking) renderNear(false); }, 15000);
+setInterval(() => { if (me && nearBox.style.display !== "none" && !picking) renderNear(false); }, NEAR_REFRESH_MS);
+
+// ---------- áreas de ruta (para suscribirse solo a lo visible) ----------
+// Cada canal es una ruta que recorre siempre la misma zona. Guardamos el
+// rectángulo (bbox) de todo lo que hemos visto de cada ruta; si no toca la vista
+// actual (con margen), no hace falta escucharla. Se recuerda entre visitas.
+const AREAS_KEY = "camiones-basura-gdl:areas-v1";
+const areas = (() => { try { return JSON.parse(localStorage.getItem(AREAS_KEY)) || {}; } catch { return {}; } })();
+let areasDirty = false;
+function learnArea(channel, d) {
+  const m = d && d.message; if (!m) return;
+  const pts = (m.ultimasPosiciones || []).map(pt).filter(Boolean);
+  const c = pt(m.coordenadas); if (c) pts.push(c);
+  if (!pts.length) return;
+  let b = areas[channel] || [Infinity, Infinity, -Infinity, -Infinity];
+  for (const [lng, lat] of pts) b = [Math.min(b[0], lng), Math.min(b[1], lat), Math.max(b[2], lng), Math.max(b[3], lat)];
+  areas[channel] = b; areasDirty = true;
+}
+setInterval(() => { if (areasDirty) { areasDirty = false; try { localStorage.setItem(AREAS_KEY, JSON.stringify(areas)); } catch {} } }, AREAS_SAVE_MS);
+
+function wantedChannels() {
+  // Vista actual ampliada VIEW_MARGIN por lado. Canales sin área conocida se escuchan
+  // siempre: o están en silencio (no cuestan) o son rutas nuevas por descubrir.
+  const v = map.getBounds(), w = v.getEast() - v.getWest(), h = v.getNorth() - v.getSouth();
+  const mw = w * VIEW_MARGIN, mh = h * VIEW_MARGIN;
+  const W = v.getWest() - mw, E = v.getEast() + mw, S = v.getSouth() - mh, N = v.getNorth() + mh;
+  return new Set(CHANNELS.filter(c => { const b = areas[c]; return !b || (b[0] <= E && b[2] >= W && b[1] <= N && b[3] >= S); }));
+}
+const subscribed = new Set();
+function syncSubscriptions() {
+  if (!ws || ws.readyState !== 1 || !established) return;
+  const want = wantedChannels();
+  for (const c of want) if (!subscribed.has(c)) { send({event: "pusher:subscribe", data: {channel: c}}); subscribed.add(c); }
+  for (const c of [...subscribed]) if (!want.has(c)) {
+    send({event: "pusher:unsubscribe", data: {channel: c}}); subscribed.delete(c);
+    removeTruck(c);   // fuera de la vista: se quita en vez de quedarse gris
+  }
+}
+let syncTimer = null;
+map.on("moveend", () => { clearTimeout(syncTimer); syncTimer = setTimeout(syncSubscriptions, SYNC_DEBOUNCE_MS); });
+function removeTruck(channel) {
+  const t = trucks.get(channel); if (!t) return;
+  t.marker.remove(); trucks.delete(channel); refreshTrails(); updateCount();
+}
+
+// ---------- pausa por inactividad (se puede desactivar) ----------
+const PAUSE_KEY = "camiones-basura-gdl:pausa-auto";
+const autoPause = document.getElementById("autoPause");
+document.getElementById("idleMin").textContent = Math.round(IDLE_MS / MINUTE) || "<1";
+try { autoPause.checked = localStorage.getItem(PAUSE_KEY) !== "no"; } catch {}
+autoPause.onchange = () => { try { localStorage.setItem(PAUSE_KEY, autoPause.checked ? "si" : "no"); } catch {} activity(); };
+let lastActivity = Date.now(), idlePaused = false;
+function activity() {
+  lastActivity = Date.now();
+  if (idlePaused) { idlePaused = false; retry = 0; sweep(); connect(); }
+}
+for (const ev of ["pointerdown", "keydown", "wheel", "touchstart"]) addEventListener(ev, activity, {passive: true});
+map.on("movestart", e => { if (e.originalEvent) activity(); });  // solo si lo movió la persona
+setInterval(() => {
+  if (autoPause.checked && !idlePaused && ws && Date.now() - lastActivity > IDLE_MS) {
+    idlePaused = true; clearTimeout(retryTimer); ws.close(WS_NORMAL_CLOSURE, "idle");
+  }
+}, IDLE_CHECK_MS);
 
 // ---------- cliente Pusher mínimo ----------
-let ws = null, retry = 0, retryTimer = null, pingTimer = null, lastRx = 0, msgCount = 0;
+let ws = null, established = false, retry = 0, retryTimer = null, pingTimer = null, lastRx = 0, msgCount = 0;
 function setConn(text, cls) { document.getElementById("conn").textContent = text; document.getElementById("dot").className = "dot " + (cls || ""); }
 function connect() {
   clearTimeout(retryTimer);
-  if (ws || document.hidden) return;
+  if (ws || document.hidden || idlePaused) return;
   setConn("Conectando…");
   ws = new WebSocket(WS_URL);
   ws.onmessage = ev => {
@@ -227,34 +328,42 @@ function connect() {
     let data = m.data; if (typeof data === "string") { try { data = JSON.parse(data); } catch {} }
     switch (m.event) {
       case "pusher:connection_established":
-        retry = 0; setConn("En vivo", "on");
-        for (const c of CHANNELS) send({event: "pusher:subscribe", data: {channel: c}});
+        retry = 0; established = true; subscribed.clear(); setConn("En vivo", "on");
+        syncSubscriptions();
         break;
       case "pusher:ping": send({event: "pusher:pong", data: {}}); break;
       case "pusher:error": console.warn("pusher:error", data); break;
-      case "geocerca.messages": msgCount++; onTruckMessage(m.channel, data); break;
+      case "geocerca.messages":
+        if (!subscribed.has(m.channel)) break;   // llegó justo después de cancelar
+        msgCount++; learnArea(m.channel, data); onTruckMessage(m.channel, data);
+        break;
     }
   };
   ws.onclose = e => {
-    ws = null; clearInterval(pingTimer);
+    ws = null; established = false; subscribed.clear(); clearInterval(pingTimer);
     if (DEBUG) console.log("[camiones] close", e.code, e.reason);
+    if (idlePaused) { setConn("En pausa · toca para reanudar"); return; }
     if (document.hidden) { setConn("En pausa"); return; }
-    const wait = Math.min(60000, 1000 * 2 ** retry) * (0.5 + Math.random() / 2); // espera creciente con jitter
+    const wait = Math.min(RETRY_MAX_MS, RETRY_BASE_MS * 2 ** retry) * (0.5 + Math.random() / 2); // espera creciente; jitter: entre 50 y 100 %
     retry++;
-    setConn(`Reconectando en ${Math.round(wait / 1000)} s`, "err");
+    setConn(`Reconectando en ${Math.round(wait / SECOND)} s`, "err");
     retryTimer = setTimeout(connect, wait);
   };
   ws.onerror = () => { /* onclose se encarga */ };
-  pingTimer = setInterval(() => { if (Date.now() - lastRx > 60000) send({event: "pusher:ping", data: {}}); }, 10000);
+  pingTimer = setInterval(() => { if (Date.now() - lastRx > ACTIVITY_TIMEOUT_MS) send({event: "pusher:ping", data: {}}); }, PING_CHECK_MS);
 }
 function send(o) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); }
 // Pestaña oculta → cerrar la conexión para no cargar al servidor; visible → reconectar.
 document.addEventListener("visibilitychange", () => {
-  if (document.hidden) { clearTimeout(retryTimer); if (ws) ws.close(1000, "hidden"); }
-  else { retry = 0; sweep(); connect(); }
+  if (document.hidden) { clearTimeout(retryTimer); if (ws) ws.close(WS_NORMAL_CLOSURE, "hidden"); }
+  else { lastActivity = Date.now(); retry = 0; sweep(); connect(); }
 });
+document.getElementById("conn").parentElement.onclick = activity;
 connect();
-if (DEBUG) setInterval(() => console.log("[camiones] " + JSON.stringify({conn: document.getElementById("conn").textContent, msgs: msgCount, trucks: trucks.size, active: +document.getElementById("count").textContent, style: map.isStyleLoaded(), trails: map.getSource("trails") ? "ok" : "no"})), 10000);
+if (DEBUG) {
+  window.__cbg = {areas, subscribed, wantedChannels, syncSubscriptions};
+  setInterval(() => console.log("[camiones] " + JSON.stringify({conn: document.getElementById("conn").textContent, msgs: msgCount, trucks: trucks.size, subs: subscribed.size, areas: Object.keys(areas).length, zoom: +map.getZoom().toFixed(1)})), DEBUG_LOG_MS);
+}
 </script>
 </body>
 </html>

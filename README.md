@@ -14,7 +14,9 @@ está documentada y puede fallar o cambiar sin aviso.
 ## Qué muestra
 - Un marcador por camión con su número de ruta, y su estela reciente.
 - Hora del último mensaje; gris si lleva más de 5 min sin mensajes.
-- Contador de camiones activos.
+- Contador de camiones en el mapa.
+- Para no cargar al servidor de origen: solo escucha las rutas de la zona
+  visible y se pausa tras 10 min sin uso (desactivable).
 - **Cerca de mí** (geolocalización del navegador) y **Elegir punto** (tocar el
   mapa; el pin se puede arrastrar): lista los 5 camiones más cercanos. Ninguna
   de las dos ubicaciones sale del navegador.
@@ -27,7 +29,8 @@ Abre `index.html` con doble clic (funciona con `file://`) o sírvelo:
 python -m http.server 8765
 ```
 
-Agrega `?debug` a la URL para ver estadísticas en la consola cada 10 s.
+Agrega `?debug` a la URL para ver estadísticas en la consola cada 10 s, y
+`?debug&idle=20` para probar la pausa por inactividad con 20 s.
 
 `probe.html` es una prueba mínima de conexión: se suscribe a 20 canales y
 cuenta mensajes. Sirve para diagnosticar si la fuente cambió.
