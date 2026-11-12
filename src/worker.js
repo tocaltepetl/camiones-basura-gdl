@@ -29,8 +29,13 @@ const ZMG = {w: -103.75, s: 20.30, e: -102.95, n: 21.05};
 export default {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
-    if (url.pathname === "/api/evento") return evento(req, env, url);
-    if (url.pathname === "/api/reportes") return reportes(req, env, ctx, url);
+    try {
+      if (url.pathname === "/api/evento") return await evento(req, env, url);
+      if (url.pathname === "/api/reportes") return await reportes(req, env, ctx, url);
+    } catch (e) {   // p. ej. D1 sin migrar o caída: la página muestra «No se pudieron cargar»
+      console.error(e);
+      return json({error: "no disponible"}, 503);
+    }
     if (url.pathname.startsWith("/api/")) return json({error: "no existe"}, 404);
     return env.ASSETS.fetch(req);
   },
