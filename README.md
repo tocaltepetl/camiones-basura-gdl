@@ -16,7 +16,8 @@ está documentada y puede fallar o cambiar sin aviso.
 - Hora del último mensaje; gris si lleva más de 5 min sin mensajes.
 - Contador de camiones en el mapa.
 - Para no cargar al servidor de origen: solo escucha las rutas de la zona
-  visible y se pausa tras 10 min sin uso (desactivable).
+  visible y se pausa tras 10 min sin uso (desactivable en «No oficial · ⓘ»,
+  abajo a la izquierda del mapa).
 - **Cerca de mí** (geolocalización del navegador) y **Elegir punto** (tocar el
   mapa; el pin se puede arrastrar): lista los 5 camiones más cercanos. Ninguna
   de las dos ubicaciones sale del navegador.
