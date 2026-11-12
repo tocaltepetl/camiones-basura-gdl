@@ -291,3 +291,20 @@ El proyecto busca dar a la ciudadanía la mayor cantidad de datos posible.
 documentado en el README. El panel muestra también dónde el bot no coincidió
 con la guía y enlaza al JSON. Los límites de privacidad no cambian: no se
 publican eventos sueltos ni celdas con menos de 5 reportes.
+
+### Reportes individuales (2026-11-12)
+Para dar más datos se publica también un renglón por reporte en
+`/api/reportes.csv`, generalizado en vez de aleatorizado:
+- **Por qué no mover los puntos al azar:** varios reportes de la misma casa se
+  agrupan alrededor del punto real, y la hora exacta más la zona identifica
+  aunque la zona sea grande.
+- **Por qué no privacidad diferencial:** con tan pocos reportes el ruido tapa la
+  señal y los números dejan de cuadrar; la generalización es más fácil de
+  explicar.
+- **Reglas:** fecha sin hora; zona de 0.01° (~1.1 km) solo si hay ≥ 3 reportes
+  con el mismo día, zona y tipo (si no, solo municipio); tipos 5–7 (sobre el
+  personal) sin zona y por semana, por riesgo de represalias de la cuadrilla;
+  los `resultado` sin zona; sin id ni hora, renglones ordenados por columnas.
+- Fechas en UTC−6 fijo (Guadalajara no tiene horario de verano desde 2022).
+- **Verificado** con `wrangler dev` y datos de ejemplo: zona con 3 reportes,
+  sin zona con 1, tipo sensible por semana y sin zona, error con rango invertido.

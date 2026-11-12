@@ -43,8 +43,24 @@ personales), en `https://basuragdl.tocaltepetl.org/api/reportes?dias=7|30&k=0..8
 | `resultados` | Cuántos dijeron que obtuvieron `folio`, que terminaron `sin-folio` o que se atoraron (`atorado`). |
 | `cambios` | Dónde el bot no coincidió con la guía: municipio, tipo de falla, `paso` y qué pidió (`menu`, `foto`, `direccion`, `ubicacion`, `datos`, `otro`). |
 
-Cuenta a quien usó esta guía, no el total de reportes al Ayuntamiento. Los
-eventos sueltos no se publican para que no se pueda identificar a nadie.
+### Un renglón por reporte (CSV)
+`https://basuragdl.tocaltepetl.org/api/reportes.csv?desde=AAAA-MM-DD&hasta=AAAA-MM-DD`
+(por omisión, los últimos 90 días; máximo 366 por descarga). Columnas: `tipo`
+(`abrir` = abrió GuaZap; `resultado` = contó cómo le fue), `fecha`,
+`municipio`, `falla`, `falla_nombre`, `dias_sin_pasar`, `zona_lat`,
+`zona_lng`, `resultado`, `paso`, `cambio`.
+
+Para que no se pueda reconocer a nadie, cada reporte está generalizado:
+- Fecha sin hora (día en hora de Guadalajara).
+- Zona de ~1.1 km (centro de la celda), solo si al menos 3 reportes comparten
+  día, zona y tipo de falla; si no, va vacía y queda el municipio.
+- «Personal condiciona el servicio», «Personal grosero» y «Personal no
+  campanea» nunca llevan zona y su fecha es el lunes de esa semana: la
+  cuadrilla de la ruta podría adivinar quién reportó.
+- Los renglones de `resultado` no llevan zona ni se pueden ligar a su reporte.
+- Sin identificador ni hora; el orden de los renglones no es el de llegada.
+
+Cuenta a quien usó esta guía, no el total de reportes al Ayuntamiento.
 
 ## Uso
 Abre `public/index.html` con doble clic (funciona con `file://`) o sírvelo:
