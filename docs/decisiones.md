@@ -104,3 +104,58 @@ proyectos cívicos y separada de cualquier identidad personal. Licencia MIT.
 Un repo público hace más visible el uso de la fuente de datos; por eso el
 README y `CONTRIBUTING.md` incluyen reglas de uso responsable y cada PR
 declara si aumenta la carga.
+
+---
+
+## Etapa 3 — límites de carga antes de publicar (2026-11-12)
+
+Cada visitante recibía los mensajes de todas las rutas (~150 camiones, uno cada
+10–20 s: ~10 mensajes/s por pestaña). Sin servidor propio no hay tope global,
+así que el límite tiene que salir del diseño de la página.
+
+**Opciones consideradas**
+- A. Escuchar solo las rutas de la zona visible. ✅
+- B. Pausa por inactividad. ✅ (desactivable por quien usa la página)
+- C. Desconectar con la pestaña oculta. Ya existía.
+- D. Reconexión con espera creciente y *jitter*. Ya existía.
+- E. Zoom mínimo para datos en vivo. Pendiente (ver abajo).
+
+### A. Zona visible
+- Cada canal es una ruta que recorre siempre la misma zona. La página guarda
+  el rectángulo (bbox) de todo lo visto de cada ruta en `localStorage`
+  (`camiones-basura-gdl:areas-v1`), así que en la siguiente visita no hay que
+  redescubrirlas.
+- Tras mover el mapa (con espera de `SYNC_DEBOUNCE_MS`) se calcula qué rutas
+  tocan la vista ampliada `VIEW_MARGIN` (50 %) por lado: se manda
+  `pusher:subscribe` a las que entran y `pusher:unsubscribe` a las que salen,
+  y sus marcadores se quitan (en vez de quedar grises, que sugeriría "sin
+  señal").
+- Los canales sin área conocida se escuchan siempre: o están en silencio (no
+  generan mensajes) o son rutas por descubrir.
+- El contador pasó de "activos" a "en el mapa": fuera de la vista ya no se
+  sabe cuántos hay.
+
+**Verificado** (de noche, con 2–3 camiones): con zoom 15 baja de 250 a 249
+canales y al alejar vuelve a 250. **Pendiente** medir la reducción de día
+(~150 camiones).
+
+**Límite conocido:** con el zoom inicial (`START_ZOOM` 11.5) se ve toda la
+ciudad y, con el margen, entran todas las rutas; quien no hace zoom sigue
+recibiendo todo. Opciones por decidir: empezar más cerca (zoom ~13), aplicar
+E, o dejarlo así.
+
+### B. Pausa por inactividad
+- Tras `IDLE_MS` (10 min) sin interacción se cierra la conexión; el indicador
+  muestra "En pausa · toca para reanudar" y cualquier toque reconecta.
+- Casilla en el pie para desactivarla; la elección se guarda en
+  `localStorage` (`camiones-basura-gdl:pausa-auto`).
+- Solo cuentan como actividad los movimientos del mapa hechos por la persona
+  (`movestart` con `originalEvent`); los programáticos reiniciaban el
+  contador y la pausa nunca llegaba.
+- `?debug&idle=SEG` acorta el tiempo para probarla. **Verificado**: con 20 s
+  se pausa, un toque reanuda y, desactivada, no se pausa.
+
+### Constantes
+Los valores de configuración (tiempos, márgenes, zoom, tamaños) viven en un
+bloque al inicio del script, con nombre y comentario; no hay números sueltos
+en la lógica.
