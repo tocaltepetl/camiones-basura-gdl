@@ -29,6 +29,8 @@ está documentada y puede fallar o cambiar sin aviso.
 - **Reportes**: mapa de calor y totales de los reportes hechos con la guía.
   Solo se cuenta, de forma anónima y desactivable, el tipo de falla, el
   municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
+- Conteo de visitas con Cloudflare Web Analytics (sin cookies ni datos
+  personales), solo para saber cuánta gente usa el mapa.
 - Modo claro y oscuro según el sistema; pensada para celular.
 
 ## Datos abiertos
