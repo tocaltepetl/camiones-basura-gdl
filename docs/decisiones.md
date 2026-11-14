@@ -308,3 +308,19 @@ Para dar más datos se publica también un renglón por reporte en
 - Fechas en UTC−6 fijo (Guadalajara no tiene horario de verano desde 2022).
 - **Verificado** con `wrangler dev` y datos de ejemplo: zona con 3 reportes,
   sin zona con 1, tipo sensible por semana y sin zona, error con rango invertido.
+
+### Exigir el mapa oficial y datos abiertos (2026-11-14)
+El mapa oficial (tequierolimpia.guadalajara.gob.mx) no funciona y este
+proyecto depende de una fuente sin documentar. La solución de fondo no es este
+mapa, sino que el Ayuntamiento publique los datos. Se agrega una ficha
+«Exige el mapa oficial y datos abiertos» (menú «Más», aviso en la bienvenida y
+en «Acerca de», enlace directo `/?exige`):
+- **Qué se pide:** arreglar el mapa oficial y publicar como datos abiertos,
+  documentados y de libre uso la ubicación de los camiones, las rutas con
+  colonias, días y horarios, y los reportes de recolección.
+- **Cómo:** mensajes para X (mencionando a @GobGDL), Facebook y WhatsApp, y una
+  solicitud de transparencia lista para copiar en la Plataforma Nacional de
+  Transparencia. Se invita a compartir las respuestas para publicarlas.
+- **Por qué sin contador:** la ficha no manda nada al Worker. Contar
+  «exigencias» agregaría datos y backend sin mucho valor; lo que pesa es la
+  solicitud formal, que deja folio y obliga a responder.
