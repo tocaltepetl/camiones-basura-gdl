@@ -96,7 +96,9 @@ el ciclo.
    con sus notas. Si se juntan varios merges sin aprobar, queda solo el más
    reciente, que los incluye todos.
 4. Para volver a una versión anterior: Actions → **Desplegar** → *Run
-   workflow* con el tag (también pide aprobación).
+   workflow* con el tag (también pide aprobación). Con `main` en lugar de un
+   tag publica lo que esté en `main` aunque no haya versión nueva (p. ej. tras
+   un PR `docs` que cambió la página); la página muestra `v0.9.0-2-gabc1234`.
 
 Las decisiones de diseño y su porqué están en
 [`docs/decisiones.md`](docs/decisiones.md); léelas antes de proponer cambios
