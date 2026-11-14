@@ -295,6 +295,10 @@ const map = new maplibregl.Map({
   attributionControl: {compact: true}
 });
 map.addControl(new maplibregl.NavigationControl({showCompass: false}), "top-left");
+// MapLibre ignora el primer aviso de su ResizeObserver: si el contenedor cambia
+// de alto mientras carga (el encabezado se acomoda), el lienzo queda corto y
+// deja una franja vacía abajo. Se vigila el contenedor por cuenta propia.
+new ResizeObserver(() => map.resize()).observe(document.getElementById("map"));
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 // Estelas: una sola fuente GeoJSON. Se vuelve a crear cada vez que cambia el estilo.
