@@ -324,3 +324,10 @@ en «Acerca de», enlace directo `/?exige`):
 - **Por qué sin contador:** la ficha no manda nada al Worker. Contar
   «exigencias» agregaría datos y backend sin mucho valor; lo que pesa es la
   solicitud formal, que deja folio y obliga a responder.
+- **Solicitud en su archivo:** sigue la
+  [guía común](https://github.com/tocaltepetl/.github/blob/main/docs/solicitudes/README.md):
+  `docs/solicitudes/2026-11-14-ayuntamiento-guadalajara-recoleccion.md`. La
+  página no puede leer `docs/` (sirve solo `public/` y funciona con `file://`),
+  así que copia el texto en `EXIGE_REQ` con un comentario que apunta a la
+  fuente. Se pide documentos, no explicaciones: reportes de incidencia y plan
+  para restablecer el mapa, en vez de «por qué no funciona».

@@ -819,14 +819,17 @@ const SITE = "https://basuragdl.tocaltepetl.org";
 const EXIGE_URL = `${SITE}/?exige`;
 const EXIGE_POST = "El mapa oficial de los camiones de basura de Guadalajara (tequierolimpia.guadalajara.gob.mx) no funciona. " +
   "Pedimos al Ayuntamiento que lo arregle y publique como datos abiertos y documentados la ubicación de los camiones, las rutas y los horarios.";
-const EXIGE_REQ = `Solicito al Ayuntamiento de Guadalajara la siguiente información sobre el servicio de recolección de basura, en formato abierto y legible por máquina (CSV o JSON):
+// Fuente: docs/solicitudes/2026-11-14-ayuntamiento-guadalajara-recoleccion.md («Texto para pegar»); cambia ambos a la vez.
+const EXIGE_REQ = `Con fundamento en el artículo 6.º de la Constitución Política de los Estados Unidos Mexicanos y en la Ley de Transparencia y Acceso a la Información Pública del Estado de Jalisco y sus Municipios, solicito al Ayuntamiento de Guadalajara la siguiente información sobre el servicio de recolección de basura:
 
-1. Catálogo vigente de rutas de recolección: número de ruta, colonias que atiende, días y horario de servicio.
-2. Registro de ubicación GPS de los camiones recolectores del último mes disponible: identificador del camión, ruta, fecha y hora, latitud y longitud.
-3. Documentación técnica del servicio de ubicación en tiempo real que alimenta el mapa tequierolimpia.guadalajara.gob.mx; el motivo por el que el mapa no funciona y la fecha prevista para restablecerlo.
-4. Número de reportes sobre recolección de basura recibidos en el año en curso (incluidos los de GuaZap), por mes, tipo de falla y colonia, y cuántos se atendieron.
+1. Catálogo vigente de rutas de recolección. Campos: número de ruta, colonias que atiende, días y horario de servicio.
+2. Registro de ubicación GPS de los camiones recolectores del último mes disponible. Campos: identificador del camión, ruta, fecha y hora, latitud y longitud.
+3. Documentación técnica del servicio de ubicación en tiempo real que alimenta el mapa tequierolimpia.guadalajara.gob.mx, los reportes de incidencia u órdenes de servicio sobre su funcionamiento en el año en curso y el plan o cronograma para restablecerlo.
+4. Si el servicio de ubicación o el mapa los opera un proveedor: versión pública del contrato o convenio, con las cláusulas sobre titularidad, licencia y uso de los datos.
+5. Número de reportes sobre recolección de basura recibidos en el año en curso (incluidos los de GuaZap), por mes, tipo de falla y colonia, y cuántos se atendieron.
+6. Que la información de los puntos anteriores se publique de forma permanente como datos abiertos, documentados, actualizados y con licencia de libre uso, e indicar si está previsto y en qué fecha.
 
-Asimismo, solicito que esta información se publique de forma permanente y actualizada como datos abiertos, con su documentación y una licencia de libre uso.`;
+Solicito la información en formato abierto y legible por máquina (CSV o JSON). Si alguna parte se considera reservada o confidencial, solicito la versión pública del resto y la prueba de daño correspondiente.`;
 const exige = document.getElementById("exige");
 document.getElementById("xReq").value = EXIGE_REQ;
 const enc = encodeURIComponent;

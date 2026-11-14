@@ -35,7 +35,10 @@ está documentada y puede fallar o cambiar sin aviso.
   ubicación de los camiones, las rutas, los horarios y los reportes como datos
   abiertos y documentados: mensajes listos para X, Facebook y WhatsApp, y el
   texto de una solicitud de transparencia para pegar en la Plataforma Nacional
-  de Transparencia. No envía ni cuenta nada; solo abre enlaces y copia textos.
+  de Transparencia (texto y seguimiento en
+  [`docs/solicitudes/`](docs/solicitudes/), según la
+  [guía común](https://github.com/tocaltepetl/.github/blob/main/docs/solicitudes/README.md)).
+  No envía ni cuenta nada; solo abre enlaces y copia textos.
 - Conteo de visitas con Cloudflare Web Analytics (sin cookies ni datos
   personales), solo para saber cuánta gente usa el mapa. Ver la
   [política de privacidad común](https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md).
