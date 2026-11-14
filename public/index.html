@@ -86,7 +86,8 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .opt input{vertical-align:middle;margin:0 6px 0 0;width:16px;height:16px}
 .hint{color:var(--muted)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.truck{position:relative;width:34px;height:34px;cursor:pointer}
+/* Sin position: MapLibre pone .maplibregl-marker en absolute y con relative los marcadores se apilan y se desfasan */
+.truck{width:34px;height:34px;cursor:pointer}
 .truck .body{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--acc);color:var(--on-acc);border:2px solid #fff;box-shadow:0 1px 4px #0006}
 /* Flecha que gira hacia donde va el camión; oculta si aún no se sabe */
 .truck .dir{position:absolute;inset:-9px;pointer-events:none}
