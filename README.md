@@ -30,7 +30,8 @@ está documentada y puede fallar o cambiar sin aviso.
   Solo se cuenta, de forma anónima y desactivable, el tipo de falla, el
   municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
 - Conteo de visitas con Cloudflare Web Analytics (sin cookies ni datos
-  personales), solo para saber cuánta gente usa el mapa.
+  personales), solo para saber cuánta gente usa el mapa. Ver la
+  [política de privacidad común](https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md).
 - Modo claro y oscuro según el sistema; pensada para celular.
 
 ## Datos abiertos
@@ -85,7 +86,7 @@ Detalles en [CONTRIBUTING.md](CONTRIBUTING.md#uso-responsable-de-la-fuente-de-da
 
 ## Contribuir
 Issues y PRs bienvenidos. Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el
-[código de conducta](CODE_OF_CONDUCT.md).
+[código de conducta](https://github.com/tocaltepetl/.github/blob/main/CODE_OF_CONDUCT.md).
 
 ## Licencia
 El código: [MIT](LICENSE). Los datos que muestra la página no son de este

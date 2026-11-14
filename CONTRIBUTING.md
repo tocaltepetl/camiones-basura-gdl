@@ -4,6 +4,11 @@
 aporte es bienvenido: reportar errores, proponer ideas, mejorar el diseño o el
 código, o corregir la documentación.
 
+Las reglas comunes a todos los proyectos de tocaltepetl (privacidad,
+identidad, proceso, títulos de PR, idioma y código de conducta) están en el
+[CONTRIBUTING común](https://github.com/tocaltepetl/.github/blob/main/CONTRIBUTING.md). Aquí va solo lo específico de
+este proyecto.
+
 ## Correr el proyecto
 No hay build, dependencias ni servidor. El sitio es un solo archivo:
 `public/index.html`.
@@ -37,11 +42,11 @@ el proyecto deja de funcionar para todos. Por eso:
 - Cualquier PR que toque la conexión se revisa con lupa.
 
 ## Privacidad
-- La ubicación de quien usa la página (o el punto que elige) **nunca** sale del
-  navegador. No se aceptan analíticas, rastreadores ni llamadas a terceros con
-  datos del usuario.
-- No incluyas coordenadas, direcciones ni datos personales de nadie en el
-  código, issues o capturas.
+Además de la [política común](https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md): la ubicación de
+quien usa la página (o el punto que elige) **nunca** sale del navegador. La
+única analítica es el conteo de visitas con Cloudflare Web Analytics, sin
+cookies ni datos personales; no se aceptan otras analíticas, rastreadores ni
+llamadas a terceros con datos del usuario.
 
 ## Identidad del proyecto
 El proyecto **no es oficial**. No uses logos, nombres ni imágenes del
@@ -96,10 +101,3 @@ el ciclo.
 Las decisiones de diseño y su porqué están en
 [`docs/decisiones.md`](docs/decisiones.md); léelas antes de proponer cambios
 de fondo (p. ej. cambiar de proveedor de mapas).
-
-## Idioma
-- **Español** para la interfaz, la documentación, los comentarios del código,
-  los mensajes de commit, los issues y los PRs. En issues y PRs también se vale
-  inglés.
-- **Inglés** para los nombres en el código (variables, funciones), como es
-  costumbre.
