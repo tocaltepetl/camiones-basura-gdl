@@ -29,6 +29,16 @@ está documentada y puede fallar o cambiar sin aviso.
 - **Reportes**: mapa de calor y totales de los reportes hechos con la guía.
   Solo se cuenta, de forma anónima y desactivable, el tipo de falla, el
   municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
+- **Exige el mapa oficial y datos abiertos** (menú «Más», o el enlace
+  `/?exige`): el mapa oficial, tequierolimpia.guadalajara.gob.mx, no funciona.
+  La ficha invita a pedir al Ayuntamiento que lo arregle y que publique la
+  ubicación de los camiones, las rutas, los horarios y los reportes como datos
+  abiertos y documentados: mensajes listos para X, Facebook y WhatsApp, y el
+  texto de una solicitud de transparencia para pegar en la Plataforma Nacional
+  de Transparencia (texto y seguimiento en
+  [`docs/solicitudes/`](docs/solicitudes/), según la
+  [guía común](https://github.com/tocaltepetl/.github/blob/main/docs/solicitudes/README.md)).
+  No envía ni cuenta nada; solo abre enlaces y copia textos.
 - Conteo de visitas con Cloudflare Web Analytics (sin cookies ni datos
   personales), solo para saber cuánta gente usa el mapa. Ver la
   [política de privacidad común](https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md).

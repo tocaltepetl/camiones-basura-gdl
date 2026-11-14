@@ -104,15 +104,15 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 :root[data-theme="dark"] .report-btn{color:#1b1f24}
 .r-nopin{padding:8px 10px;border-radius:8px;border:1px dashed var(--line);margin:10px 0}
 .r-nopin button{margin-top:6px;font-size:13px;padding:4px 10px}
-#report{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:14px 16px;border:0;border-radius:12px;background:var(--card);color:var(--fg);box-shadow:0 4px 24px #0006,0 0 0 1px var(--line)}
-#report::backdrop{background:#0007}
-#report h2{font-size:16px;margin:0}
-#report p{margin:6px 0}
-#report label{display:block;margin:10px 0 4px;font-weight:600;font-size:14px}
+#report,#exige{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:14px 16px;border:0;border-radius:12px;background:var(--card);color:var(--fg);box-shadow:0 4px 24px #0006,0 0 0 1px var(--line)}
+#report::backdrop,#exige::backdrop{background:#0007}
+#report h2,#exige h2{font-size:16px;margin:0}
+#report p,#exige p{margin:6px 0}
+#report label,#exige label{display:block;margin:10px 0 4px;font-weight:600;font-size:14px}
 #report select,#report input{font:inherit;width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
-#report ol{margin:6px 0;padding-left:22px}
-#report li{margin:6px 0}
-#report code{font:600 14px ui-monospace,monospace;padding:1px 6px;border-radius:6px;background:var(--bg);border:1px solid var(--line)}
+#report ol,#exige ol{margin:6px 0;padding-left:22px}
+#report li,#exige li{margin:6px 0}
+#report code,#exige code{font:600 14px ui-monospace,monospace;padding:1px 6px;border-radius:6px;background:var(--bg);border:1px solid var(--line)}
 .copy{padding:1px 8px;font-size:12px;margin-left:4px;vertical-align:1px}
 .r-loc{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
 .r-loc button{font-size:13px;padding:4px 10px}
@@ -124,6 +124,16 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .r-choices{display:flex;gap:6px;flex-wrap:wrap}
 .r-choices button{font-size:13px;padding:4px 10px}
 .r-thanks{color:var(--acc);font-weight:600}
+/* Exige datos abiertos */
+#exige h3{font-size:14px;margin:14px 0 4px}
+#exige ul{margin:4px 0;padding-left:20px}
+#exige textarea{font-family:inherit;font-size:13px;line-height:1.4;width:100%;min-height:9em;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg);resize:vertical}
+.x-acts{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.x-acts a,.x-acts button{font-size:13px;padding:5px 10px;border-radius:8px;text-decoration:none}
+.x-acts a{border:1px solid var(--line);color:var(--fg)}
+.x-acts a.main{background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:600}
+.wel-down{font-size:13px;padding:8px 10px;border-radius:8px;border:1px dashed var(--line);margin:0 0 12px}
+.wel-down button{width:auto!important;padding:2px 8px!important;font-size:13px}
 #heat{position:absolute;top:8px;right:8px;z-index:2;width:min(300px,calc(100vw - 32px));max-height:calc(100% - 16px);overflow:auto;padding:10px 12px;border-radius:12px;background:var(--card);box-shadow:0 2px 12px #0005,0 0 0 1px var(--line);font-size:14px}
 #heat select{font:inherit;width:100%;padding:4px 6px;margin:2px 0 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 @media (max-width:520px){#heat{max-height:45%}}
@@ -151,6 +161,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
       <button id="btnPick" type="button">🗺️ Ver camiones cerca de otro lugar</button>
       <button id="btnHeat" type="button" aria-pressed="false">🔥 Mapa de reportes</button>
       <button id="btnHelp" type="button">❔ ¿Cómo funciona?</button>
+      <button id="btnExige" type="button">📣 Exige el mapa oficial y datos abiertos</button>
       <a href="https://github.com/tocaltepetl/camiones-basura-gdl" target="_blank" rel="noopener"><svg class="gh" viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656"/></svg> Código en GitHub ↗</a>
     </div></div>
 </header>
@@ -164,6 +175,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
     <li><span aria-hidden="true">👆</span><span>Toca un camión para ver su número de ruta.</span></li>
     <li><span aria-hidden="true">📍</span><span>Usa <b>Cerca de mí</b> para saber cuál te queda más cerca y si viene hacia ti.</span></li>
   </ul>
+  <p class="wel-down">El mapa oficial (Te Quiero Limpia) no funciona. <button type="button" class="sec" data-exige>📣 Exige que lo arreglen</button></p>
   <button type="button" id="welOk">Entendido</button>
 </div></div>
 <!-- Mapa de calor de reportes (issue #14). -->
@@ -219,6 +231,42 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   </div>
   <p id="rThanks" class="r-thanks" hidden>¡Gracias! Con esto mejoramos la guía.</p>
 </dialog>
+<!-- Exigir al Ayuntamiento el mapa oficial y los datos abiertos. Nada se envía desde aquí: solo abre enlaces y copia textos. -->
+<dialog id="exige" aria-labelledby="exigeTitle">
+  <div class="card-head">
+    <h2 id="exigeTitle">Exige el mapa oficial y datos abiertos</h2>
+    <button type="button" class="card-x" id="exigeClose" aria-label="Cerrar">✕</button>
+  </div>
+  <p>El mapa del Ayuntamiento, <a href="https://tequierolimpia.guadalajara.gob.mx" target="_blank" rel="noopener">Te Quiero Limpia</a>, no funciona. Este mapa no oficial lo suple como puede, con una fuente sin documentar que puede desaparecer cualquier día.</p>
+  <p><b>Lo que pedimos al Ayuntamiento de Guadalajara:</b></p>
+  <ul>
+    <li>Que arregle su mapa oficial.</li>
+    <li>Que publique como <b>datos abiertos, documentados y de libre uso</b>: la ubicación en vivo de los camiones, las rutas con sus colonias, días y horarios, y los reportes de recolección.</li>
+  </ul>
+  <p class="hint">Con datos abiertos, cualquiera puede hacer mapas, avisos o análisis sin depender de que una app funcione.</p>
+
+  <h3>1. Pídelo en redes</h3>
+  <div class="x-acts">
+    <a class="main" id="xX" target="_blank" rel="noopener">Publicar en X ↗</a>
+    <a id="xFb" target="_blank" rel="noopener">Facebook ↗</a>
+    <a id="xWa" target="_blank" rel="noopener">Enviar por WhatsApp ↗</a>
+    <button type="button" class="sec" id="xShare" hidden>Compartir…</button>
+    <button type="button" class="sec" id="xCopyPost">Copiar mensaje</button>
+  </div>
+
+  <h3>2. Haz una solicitud de transparencia</h3>
+  <p>Es gratis, no necesitas abogado y la ley obliga a responder. Copia el texto, entra a la Plataforma Nacional de Transparencia, elige como sujeto obligado al <b>Ayuntamiento de Guadalajara</b> (Jalisco) y pégalo.</p>
+  <label for="xReq">Texto de la solicitud</label>
+  <textarea id="xReq" readonly></textarea>
+  <div class="x-acts">
+    <button type="button" class="sec" id="xCopyReq">Copiar solicitud</button>
+    <a class="main" href="https://www.plataformadetransparencia.org.mx/" target="_blank" rel="noopener">Ir a la Plataforma ↗</a>
+  </div>
+  <p class="hint">Guarda el folio. Si no responden en el plazo o la respuesta no te convence, puedes presentar un recurso de revisión desde la misma plataforma. Si te responden, <a href="https://github.com/tocaltepetl/camiones-basura-gdl/issues/new/choose" target="_blank" rel="noopener">compártenos la respuesta</a> para publicarla.</p>
+
+  <h3>3. Pásalo</h3>
+  <p class="hint">Comparte este enlace para que más gente lo exija: <a href="?exige" id="xLink">basuragdl.tocaltepetl.org/?exige</a></p>
+</dialog>
 <div id="legend" class="legend maplibregl-ctrl" aria-label="Leyenda"><span><span class="lg" style="background:var(--acc)"></span>En vivo</span><span><span class="lg" style="background:var(--old)"></span>Sin señal reciente</span><span><span class="lg line"></span>Recorrido reciente</span></div>
 <!-- Info flotante sobre el mapa (abajo a la izquierda). Solo se abre al tocarla. -->
 <div id="infoCtl" class="info-ctl maplibregl-ctrl">
@@ -229,6 +277,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
     </div>
     <p>Mapa en vivo, <strong>no oficial</strong>, de los camiones de basura de Guadalajara. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso.</p>
     <p>Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado. Si reportas con la guía, contamos de forma anónima el tipo de falla y una zona de ~500 m (puedes desactivarlo en la ficha). Para saber cuánta gente usa el mapa, contamos visitas con Cloudflare Web Analytics, sin cookies ni datos personales. <a href="https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md" target="_blank" rel="noopener">Cómo cuidamos tu privacidad</a>.</p>
+    <p>Este mapa existe porque el oficial, <a href="https://tequierolimpia.guadalajara.gob.mx" target="_blank" rel="noopener">tequierolimpia.guadalajara.gob.mx</a>, no funciona. <a href="#" data-exige>Exige que lo arreglen y publiquen los datos</a>.</p>
     <p>¿No pasó el camión o hubo un problema? Usa <strong>«Repórtalo»</strong> (arriba) para enviarlo por GuaZap, el WhatsApp de reportes del Ayuntamiento.</p>
     <p>Puedes agregar este mapa a la pantalla de inicio de tu celular desde el menú del navegador («Agregar a la pantalla principal» o «Instalar app»).</p>
     <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso <span class="hint">(ahorra datos de tu celular)</span></label>
@@ -505,7 +554,7 @@ async function copyText(text, btn) {
   try { await navigator.clipboard.writeText(text); }
   catch {   // file:// o permisos: copia con una selección temporal
     const ta = Object.assign(document.createElement("textarea"), {value: text});
-    report.append(ta); ta.select(); document.execCommand("copy"); ta.remove();
+    (btn.closest("dialog") || document.body).append(ta); ta.select(); document.execCommand("copy"); ta.remove();
   }
   const prev = btn.textContent; btn.textContent = "Copiado ✓"; setTimeout(() => btn.textContent = prev, 1500);
 }
@@ -763,6 +812,46 @@ document.getElementById("welOk").onclick = () => setWelcome(false);
 welcome.onclick = e => { if (e.target === welcome) setWelcome(false); };
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !welcome.hidden) setWelcome(false); });
 document.getElementById("btnHelp").onclick = () => setWelcome(true);
+
+// ---------- exigir el mapa oficial y datos abiertos ----------
+// Solo arma enlaces para compartir y textos para copiar: no se envía ni se cuenta nada.
+const SITE = "https://basuragdl.tocaltepetl.org";
+const EXIGE_URL = `${SITE}/?exige`;
+const EXIGE_POST = "El mapa oficial de los camiones de basura de Guadalajara (tequierolimpia.guadalajara.gob.mx) no funciona. " +
+  "Pedimos al Ayuntamiento que lo arregle y publique como datos abiertos y documentados la ubicación de los camiones, las rutas y los horarios.";
+// Fuente: docs/solicitudes/2026-11-14-ayuntamiento-guadalajara-recoleccion.md («Texto para pegar»); cambia ambos a la vez.
+const EXIGE_REQ = `Con fundamento en el artículo 6.º de la Constitución Política de los Estados Unidos Mexicanos y en la Ley de Transparencia y Acceso a la Información Pública del Estado de Jalisco y sus Municipios, solicito al Ayuntamiento de Guadalajara la siguiente información sobre el servicio de recolección de basura:
+
+1. Catálogo vigente de rutas de recolección. Campos: número de ruta, colonias que atiende, días y horario de servicio.
+2. Registro de ubicación GPS de los camiones recolectores del último mes disponible. Campos: identificador del camión, ruta, fecha y hora, latitud y longitud.
+3. Documentación técnica del servicio de ubicación en tiempo real que alimenta el mapa tequierolimpia.guadalajara.gob.mx, los reportes de incidencia u órdenes de servicio sobre su funcionamiento en el año en curso y el plan o cronograma para restablecerlo.
+4. Si el servicio de ubicación o el mapa los opera un proveedor: versión pública del contrato o convenio, con las cláusulas sobre titularidad, licencia y uso de los datos.
+5. Número de reportes sobre recolección de basura recibidos en el año en curso (incluidos los de GuaZap), por mes, tipo de falla y colonia, y cuántos se atendieron.
+6. Que la información de los puntos anteriores se publique de forma permanente como datos abiertos, documentados, actualizados y con licencia de libre uso, e indicar si está previsto y en qué fecha.
+
+Solicito la información en formato abierto y legible por máquina (CSV o JSON). Si alguna parte se considera reservada o confidencial, solicito la versión pública del resto y la prueba de daño correspondiente.`;
+const exige = document.getElementById("exige");
+document.getElementById("xReq").value = EXIGE_REQ;
+const enc = encodeURIComponent;
+document.getElementById("xX").href = `https://x.com/intent/post?text=${enc("@GobGDL " + EXIGE_POST)}&url=${enc(EXIGE_URL)}`;
+document.getElementById("xFb").href = `https://www.facebook.com/sharer/sharer.php?u=${enc(EXIGE_URL)}`;
+document.getElementById("xWa").href = `https://wa.me/?text=${enc(EXIGE_POST + " Súmate: " + EXIGE_URL)}`;
+document.getElementById("xLink").href = EXIGE_URL;
+const xShare = document.getElementById("xShare");
+xShare.hidden = !navigator.share;
+xShare.onclick = () => navigator.share({title: "Exige el mapa oficial de la basura", text: EXIGE_POST, url: EXIGE_URL}).catch(() => {});
+document.getElementById("xCopyPost").onclick = e => copyText(`${EXIGE_POST} ${EXIGE_URL}`, e.currentTarget);
+document.getElementById("xCopyReq").onclick = e => copyText(EXIGE_REQ, e.currentTarget);
+document.getElementById("exigeClose").onclick = () => exige.close();
+exige.addEventListener("click", e => {
+  if (e.target !== exige) return;   // clic en el fondo cierra
+  const r = exige.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) exige.close();
+});
+function openExige() { welcome.hidden = true; document.getElementById("aboutCard").hidden = true; exige.showModal(); }
+document.getElementById("btnExige").onclick = openExige;
+document.addEventListener("click", e => { if (e.target.closest("[data-exige]")) { e.preventDefault(); openExige(); } });
+if (PARAMS.has("exige")) openExige();
 const legend = document.getElementById("legend");
 map.addControl({onAdd: () => legend, onRemove: () => legend.remove()}, "bottom-right");
 // Aviso de mapa vacío: solo si llevamos un rato en vivo sin ningún camión en la vista.
