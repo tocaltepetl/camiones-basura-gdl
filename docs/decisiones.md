@@ -331,3 +331,115 @@ en «Acerca de», enlace directo `/?exige`):
   así que copia el texto en `EXIGE_REQ` con un comentario que apunta a la
   fuente. Se pide documentos, no explicaciones: reportes de incidencia y plan
   para restablecer el mapa, en vez de «por qué no funciona».
+
+---
+
+## Grabador permanente y datos crudos (2026-11-19, issue #24)
+
+Para reconstruir rutas y horarios típicos (issue #24) hacen falta semanas de
+recorridos. Se graba todo lo que manda la fuente y se publica como datos
+abiertos, un archivo por día.
+
+**Opciones:** VPS mínimo · **Cloudflare (Worker + Durable Object + R2,
+elegida)**. Cloudflare ya aloja el sitio y despliega desde GitHub Actions, y
+el plan gratuito alcanza (cuentas abajo). El 2026-11-18 se comprobó que el
+servidor de la fuente acepta una conexión WebSocket saliente desde un Worker
+(status 101, suscripciones aceptadas, mensajes reales).
+
+### Cómo funciona
+- Worker aparte del sitio (`grabador/`, su propio `wrangler.jsonc` y el
+  workflow `grabador.yml`). No toca el despliegue del sitio.
+- Un Durable Object (`Grabador`, una sola instancia) abre **una conexión** para
+  todos los canales `geocerca.1`–`300`. Igual que el cliente de la página:
+  responde `pusher:ping`, manda ping propio tras 60 s sin tráfico, reconecta si
+  pasan 120 s sin nada, con espera creciente (1 s → 60 s) y *jitter*; tras 10
+  fallos seguidos espera 5 min, por si cambió la key.
+- **Durabilidad:** búfer en memoria → un lote en SQLite (el almacenamiento del
+  Durable Object) cada 10 s → cada hora terminada, un miembro gzip por hora →
+  al cerrar el día, los miembros se concatenan tal cual hacia R2. Varios
+  miembros gzip seguidos son un `.gz` válido (`zcat`, `gzip.open` de Python),
+  así que no se recomprime el día: copiar bytes casi no gasta CPU, y no hace
+  falta multipart ni «append», que R2 no tiene. Medido con días reales:
+  comprimir por hora ocupa solo 0.08 % más que comprimir el día completo.
+- **Reinicios** (despliegues, mantenimiento): se pierde a lo más lo que había en
+  memoria (≤ 10 s). El constructor anota `inicio` con la hora del último dato
+  guardado, así el hueco queda explícito. Una alarma por minuto mantiene vivo
+  el objeto y reconecta si hace falta: una conexión saliente solo evita el
+  desalojo por 15 min. Además, un cron cada 5 min lo despierta (segundo vigía).
+- **Aviso por ntfy** (secreto `NTFY_TOPIC`, fuera del repo): de 06:00 a 20:00,
+  si pasan más de 10 min sin mensajes; un aviso por incidente y otro al
+  recuperarse. Otro si llegan mensajes por arriba del canal 280. Si el objeto no
+  responde (p. ej. límite diario agotado), el cron, que tiene su propia cuota,
+  avisa cada 30 min.
+- Un `fetch` de prueba (`/prueba/…`) solo existe con `--var PRUEBA:1` en
+  `wrangler dev`; en producción todo responde 404. No hay nada en vivo.
+
+### Horario: pausa de madrugada
+Para dejar margen en el plan gratuito. Conecta a las 05:00. Después de las
+21:00 se pausa cuando, tras 30 min conectado, solo se vieron 3 unidades o
+menos (las estacionadas), y a las 00:00 siempre. Si el objeto se reinicia
+después de las 21:00, vuelve a conectar y observa otros 30 min.
+- **Qué se pierde**, medido el 13, 14 y 17 de noviembre: 1.8–2.5 % de los
+  mensajes del día. De 00:00 a 05:00 son solo 2 o 3 unidades estacionadas. De
+  21:00 a 00:00 normalmente también, pero el 17-nov hubo 12 camiones
+  trabajando entre 21 y 22 h; por eso la pausa espera a que no haya camiones
+  en vez de cortar fija a las 21:00.
+- La pausa queda en el registro (`pausa`, `reanuda`), para no confundirla con un
+  corte.
+
+### Cuentas con el plan gratuito (volumen del 17-nov: 233 mil mensajes, 160 MB, 17 MB en gzip)
+| Recurso | Límite | Uso por día |
+|---|---|---|
+| Duración del Durable Object | 13,000 GB-s (se reinicia a las 00:00 UTC = 18:00 GDL) | 16–19 h × 0.125 GB ≈ 7,200–8,600 GB-s (55–66 %). Conectado 24 h serían ~11,000 (85 %) |
+| Peticiones al Durable Object | 100,000 | mensajes ÷ 20 ≈ 11,700 + alarmas ~1,200 + cron 288 |
+| Filas escritas en SQLite | 100,000 | ~14,000 (lotes, borrados, alarmas, registro) |
+| Almacenamiento del Durable Object | 5 GB | ≤ 30 MB (la hora en curso + 3 días de respaldo) |
+| CPU | 30 s por evento | gzip de una hora (≤ 22 MB) ≈ décimas de segundo |
+| R2 | 10 GB-mes, 1 M escrituras y 10 M lecturas al mes | ~5.5–6 GB al año; 3 escrituras al día |
+
+- **Por confirmar en el primer día:** la documentación aplica el 20:1 a los
+  mensajes que llegan a sockets *aceptados* por el Durable Object, pero no dice
+  cómo cuenta los de una conexión *saliente*. Si contaran 1:1, no cabría y
+  haría falta el plan de US$5 al mes. Se revisa en las métricas del panel.
+- R2 se llena en ~1.5 años. Después: pagar el excedente (US$0.015 por GB al
+  mes) o mover los años viejos a otro lado.
+
+### Datos abiertos
+- Un archivo por día de Guadalajara, publicado **al cerrar el día**. Formato
+  JSONL en gzip, una línea `{"t", "ch", "data"}` por mensaje: el mismo que la
+  grabación con la que empezó el análisis, para que los scripts sirvan igual.
+- `data` sin cambios, salvo que se quita `unitVehicleIdInternal`. No se
+  recortan paradas ni la precisión del GPS: los camiones son vehículos
+  públicos en servicio y su posición ya se transmite en abierto.
+- Aparte, el registro de conexiones del día, e `index.json` / `index.html`
+  con tamaño, SHA-256, mensajes, camiones y minutos conectado de cada día.
+  Los días sin archivo aparecen marcados.
+- **Libre uso**, como los reportes, citando la fuente sin repetir la app key.
+  Aviso: son para analizar el servicio, no para vigilar a las cuadrillas.
+- Se sirve desde R2 por `datos.basuragdl.tocaltepetl.org`, con caché larga en
+  los archivos de cada día (no cambian) y de 5 min en los índices. CORS
+  abierto para lectura.
+- Solo se publica lo que graba este servicio. No se suben grabaciones previas.
+- Conteo de visitas del índice con Cloudflare Web Analytics, sin cookies ni
+  datos personales, avisado en la página.
+
+### Carga sobre la fuente
+Una conexión permanente más, de 05:00 a ~21:00, para todas las rutas: lo mismo
+que una persona con el mapa abierto todo el día. Durante unas semanas convive
+con la grabación de prueba con la que empezó el análisis, para comparar que
+graben lo mismo (`grabador/herramientas/conteo.py`). Después, esa se apaga.
+
+### Para activarlo (una sola vez, en la cuenta de Cloudflare)
+1. Crear el bucket R2 `camiones-basura-datos`.
+2. Conectarle el dominio `datos.basuragdl.tocaltepetl.org` (R2 → bucket →
+   Settings → Custom domains). Sin `r2.dev`.
+3. Dar al token del ambiente `production` el permiso **Workers R2 Storage:
+   Edit** (despliegue y CORS del bucket).
+4. Tras el primer despliegue, el secreto `NTFY_TOPIC` en el Worker
+   `camiones-basura-grabador` (Settings → Variables and Secrets). Se conserva
+   entre despliegues.
+
+### Cómo revertir
+Borrar el Worker `camiones-basura-grabador` (con su Durable Object) en el panel
+y quitar `grabador/` y el workflow. Lo publicado en R2 se puede dejar o borrar
+con el bucket. El sitio no depende de nada de esto.

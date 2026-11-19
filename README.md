@@ -8,7 +8,9 @@
 Mapa en vivo, **no oficial**, de los camiones de basura de Guadalajara.
 
 Un archivo estático (`public/index.html`) más un Worker mínimo para contar
-reportes de forma anónima (`src/worker.js`). El navegador se
+reportes de forma anónima (`src/worker.js`). Aparte, un grabador
+(`grabador/`) publica los recorridos crudos de cada día como datos abiertos
+(ver [Recorridos crudos por día](#recorridos-crudos-por-día)). El navegador se
 conecta directo al WebSocket público que usa la app municipal. Esa fuente no
 está documentada y puede fallar o cambiar sin aviso.
 
@@ -75,6 +77,39 @@ Para que no se pueda reconocer a nadie, cada reporte está generalizado:
 
 Cuenta a quien usó esta guía, no el total de reportes al Ayuntamiento.
 
+### Recorridos crudos por día
+Todos los mensajes que mandan los camiones, un archivo por día, en
+**https://datos.basuragdl.tocaltepetl.org/** (índice en HTML y en
+[`index.json`](https://datos.basuragdl.tocaltepetl.org/index.json), con tamaño y
+SHA-256). Sirven para reconstruir rutas y horarios, que el Ayuntamiento no
+publica.
+
+- **Fuente:** la señal pública en vivo de la Guadalajara App (Ayuntamiento de
+  Guadalajara), la misma que usa el mapa. No oficial.
+- **Libre uso**, citando la fuente y este proyecto. Son para **analizar el
+  servicio** (rutas, horarios, cobertura), **no para vigilar a las cuadrillas**.
+- **Se publica al cerrar el día** (hora de Guadalajara, UTC−6), poco después de
+  medianoche. Nada es en vivo. Solo hay datos desde que empezó a grabar este
+  servicio (noviembre de 2026).
+- `crudo/mensajes-AAAA-MM-DD.jsonl.gz`: JSON Lines en gzip, una línea por
+  mensaje:
+  ```json
+  {"t": 1763388000123, "ch": "geocerca.8", "data": {"geocerca_id": 8, "timestamp": "…", "message": {"vehicleId": 8, "routeCode": "8", "coordenadas": [-103.31, 20.73], "ultimasPosiciones": [["-103.31", "20.73"], …]}}}
+  ```
+  `t` es la hora de recepción (ms desde 1970, UTC) y `data`, el mensaje tal
+  como llegó, sin recortar paradas ni la precisión del GPS. Solo se quita
+  `unitVehicleIdInternal`, un identificador interno de la unidad.
+- `crudo/conexion-AAAA-MM-DD.jsonl.gz`: cuándo estuvo conectado el grabador
+  (`open`, `established`, `suscrito`, `close`, `reconnect`, `error`, `pausa`,
+  `reanuda`, `inicio` = reinicio del grabador). Sirve para distinguir «no
+  pasó el camión» de «no estábamos escuchando».
+- **Horario:** conecta a las 05:00. Después de las 21:00 se pausa cuando en 30
+  min solo se ven las unidades estacionadas, y a las 00:00 se pausa siempre.
+  De madrugada solo mandan señal 2 o 3 unidades estacionadas. Domingos y
+  festivos casi no hay recolección.
+- Leer un día en Python: `gzip.open("mensajes-AAAA-MM-DD.jsonl.gz", "rt")`,
+  una línea por `json.loads`.
+
 ## Uso
 Abre `public/index.html` con doble clic (funciona con `file://`) o sírvelo:
 
@@ -91,7 +126,9 @@ cuenta mensajes. Sirve para diagnosticar si la fuente cambió.
 ## Uso responsable
 La fuente de datos no es oficial ni está documentada. Si se abusa de ella,
 pueden cerrarla y el proyecto deja de funcionar para todos. No uses este
-código para abrir más conexiones, hacer scrapers o guardar datos en masa.
+código para abrir más conexiones, hacer scrapers o guardar datos en masa: los
+recorridos ya se graban con una sola conexión y se publican cada día en
+[Recorridos crudos por día](#recorridos-crudos-por-día); usa esos archivos.
 Detalles en [CONTRIBUTING.md](CONTRIBUTING.md#uso-responsable-de-la-fuente-de-datos).
 
 ## Contribuir
@@ -106,6 +143,11 @@ proyecto: los publica el Ayuntamiento de Guadalajara por su app.
 Sitio: **https://basuragdl.tocaltepetl.org** (Cloudflare Workers, solo archivos
 estáticos). Se publica desde GitHub Actions al liberar una versión; los
 cambios están en los [Releases](https://github.com/tocaltepetl/camiones-basura-gdl/releases).
+
+Grabador: **https://datos.basuragdl.tocaltepetl.org** (Cloudflare Workers con
+un Durable Object y R2; código en `grabador/`, configuración aparte en
+`grabador/wrangler.jsonc`). Lo despliega el workflow «Grabador» al hacer merge
+de cambios en `grabador/`. Pruebas: `cd grabador && npm test`.
 
 ## Decisiones
 Ver [`docs/decisiones.md`](docs/decisiones.md).
