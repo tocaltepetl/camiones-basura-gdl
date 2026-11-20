@@ -36,7 +36,10 @@ el proyecto deja de funcionar para todos. Por eso:
 - **No aumentes la carga**: nada de abrir más conexiones, suscribirse a más
   canales de los necesarios, reconectar agresivamente ni hacer polling.
 - **No hagas scrapers, bots ni almacenamiento masivo** con esta fuente a
-  partir de este código.
+  partir de este código. Los recorridos ya se graban con **una sola conexión**
+  (`grabador/`) y se publican cada día como
+  [datos abiertos](README.md#recorridos-crudos-por-día): úsalos en vez de
+  abrir otra conexión.
 - Los cambios que **reduzcan** la carga (p. ej. suscribirse solo a la zona
   visible) son especialmente bienvenidos.
 - Cualquier PR que toque la conexión se revisa con lupa.

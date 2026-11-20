@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recorridos crudos · Camiones de basura GDL</title>
+<meta name="description" content="Recorridos crudos de los camiones de basura de Guadalajara, un archivo por día. Datos abiertos, no oficiales.">
+<link rel="icon" href="https://basuragdl.tocaltepetl.org/favicon.svg" type="image/svg+xml">
+<style>
+:root { --bg:#fafaf7; --fg:#1d1d1b; --muted:#5d5d58; --line:#deded8; --acc:#1f7a4d; --falta:#fff4e0; color-scheme: light dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#141413; --fg:#ececea; --muted:#a3a39d; --line:#33332f; --acc:#5fc792; --falta:#3a2e14; } }
+:root[data-theme="dark"] { --bg:#141413; --fg:#ececea; --muted:#a3a39d; --line:#33332f; --acc:#5fc792; --falta:#3a2e14; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 52rem; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 1.5rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.1rem; margin: 2rem 0 .5rem; }
+p, li { color: var(--fg); }
+.sub, .sem, .pie { color: var(--muted); }
+.sem { font-size: .85em; }
+a { color: var(--acc); }
+code { font-size: .9em; overflow-wrap: anywhere; }
+.aviso { border-left: 4px solid var(--acc); padding: .25rem .75rem; margin: 1rem 0; }
+.tabla { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); }
+td.n { text-align: right; font-variant-numeric: tabular-nums; }
+tr.falta td { background: var(--falta); white-space: normal; }
+</style>
+</head>
+<body>
+<main>
+<h1>Recorridos crudos de los camiones de basura</h1>
+<p class="sub">Guadalajara · un archivo por día · actualizado {{ACTUALIZADO}} (hora de Guadalajara)</p>
+
+<p>Cada archivo tiene todos los mensajes que mandaron los camiones ese día por la <strong>señal pública en vivo de la Guadalajara App</strong> (Ayuntamiento de Guadalajara), tal como llegaron. Los graba <a href="https://github.com/tocaltepetl/camiones-basura-gdl">camiones-basura-gdl</a>, un proyecto cívico <strong>no oficial</strong>. Los días se publican al terminar; nada es en vivo. Para el mapa en vivo, ve a <a href="https://basuragdl.tocaltepetl.org">basuragdl.tocaltepetl.org</a>.</p>
+
+<p class="aviso"><strong>Libre uso</strong>, citando la fuente (la Guadalajara App) y este proyecto. Estos datos son para <strong>analizar el servicio</strong> (rutas, horarios, cobertura), <strong>no para vigilar a las cuadrillas</strong>.</p>
+
+<h2>Días</h2>
+<div class="tabla">
+<table>
+<thead><tr><th>Día</th><th>Mensajes</th><th>Camiones</th><th>Conectado</th><th>Archivo</th><th>Registro</th></tr></thead>
+<tbody>
+{{FILAS}}
+</tbody>
+</table>
+</div>
+<p class="sub">También en <a href="index.json">index.json</a>, con el tamaño y el SHA-256 de cada archivo.</p>
+
+<h2>Formato</h2>
+<ul>
+<li><code>mensajes-AAAA-MM-DD.jsonl.gz</code>: JSON Lines en gzip, una línea por mensaje: <code>{"t": hora de recepción en ms (epoch), "ch": "geocerca.N", "data": {...}}</code>. <code>data</code> es el mensaje de la fuente sin cambios, salvo que se quita el identificador interno de la unidad (<code>unitVehicleIdInternal</code>). La precisión del GPS no se recorta.</li>
+<li><code>conexion-AAAA-MM-DD.jsonl.gz</code>: cuándo estuvo conectado el grabador (<code>open</code>, <code>established</code>, <code>close</code>, <code>reconnect</code>, <code>error</code>, <code>pausa</code>, <code>reanuda</code>, <code>inicio</code>). Sirve para distinguir «no pasó el camión» de «el grabador estaba desconectado».</li>
+<li>El día es el de Guadalajara (UTC−6). El grabador se desconecta de madrugada: conecta a las 05:00 y, después de las 21:00, se pausa cuando ya no hay camiones en servicio (a más tardar a las 00:00). Domingos y días festivos casi no hay recolección.</li>
+</ul>
+<p>Detalles y ejemplos en el <a href="https://github.com/tocaltepetl/camiones-basura-gdl#recorridos-crudos-por-día">README del proyecto</a>.</p>
+
+<p class="pie">Contamos visitas con Cloudflare Web Analytics, sin cookies ni datos personales. <a href="https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md">Cómo cuidamos tu privacidad</a>.</p>
+</main>
+<!-- Cloudflare Web Analytics: visitas sin cookies ni datos personales -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "05f1e13089164a0b824bb84ea67449e1"}'></script>
+</body>
+</html>

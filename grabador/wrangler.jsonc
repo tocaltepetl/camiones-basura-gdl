@@ -1,0 +1,51 @@
+// Grabador permanente de recorridos: Worker + Durable Object + R2, aparte del
+// sitio (que usa ../wrangler.jsonc). Lo despliega .github/workflows/grabador.yml;
+// no hace falta correrlo a mano. Ver docs/decisiones.md («Grabador permanente y
+// datos crudos»).
+{
+	"$schema": "../node_modules/wrangler/config-schema.json",
+	"name": "camiones-basura-grabador",
+	"main": "src/index.js",
+	"compatibility_date": "2026-11-10",
+	"rules": [
+		{ "type": "Text", "globs": ["**/*.html"], "fallthrough": true } // plantilla del índice
+	],
+	"durable_objects": {
+		"bindings": [{ "name": "GRABADOR", "class_name": "Grabador" }]
+	},
+	"migrations": [
+		{ "tag": "v1", "new_sqlite_classes": ["Grabador"] } // el plan gratuito solo admite SQLite
+	],
+	"r2_buckets": [
+		{
+			// Público solo por el dominio propio datos.basuragdl.tocaltepetl.org (sin r2.dev).
+			"binding": "DATOS",
+			"bucket_name": "camiones-basura-datos"
+		}
+	],
+	"triggers": {
+		"crons": ["*/5 * * * *"] // vigía: despierta al objeto y avisa por ntfy
+	},
+	"vars": {
+		// La misma fuente que usa la página (docs/decisiones.md, «Fuente de datos»).
+		"URL_WS": "wss://workspace.guadalajara.gob.mx/socket/app/6cnmouj20xedzawxb98f?protocol=7&client=js&version=8.4.0&flash=false",
+		"CANALES": "1-300",
+		"BASE_URL": "https://datos.basuragdl.tocaltepetl.org/",
+		// Horario (hora de Guadalajara): conecta a las 5; desde las 21 se pausa cuando, en
+		// VENTANA_MIN minutos, solo se ven UNIDADES_ESTACIONADAS unidades o menos; a las 0, siempre.
+		"HORA_CONECTA": 5,
+		"HORA_DESCONECTA": 21,
+		"VENTANA_MIN": 30,
+		"UNIDADES_ESTACIONADAS": 3,
+		// Aviso por ntfy (secreto NTFY_TOPIC, puesto en el panel de Cloudflare).
+		"AVISO_DESDE": 6,
+		"AVISO_HASTA": 20,
+		"UMBRAL_MIN": 10,
+		"CANAL_AVISO": 280,
+		// Días que lo ya publicado se queda en el Durable Object como respaldo.
+		"DIAS_RESPALDO": 3
+	},
+	"observability": { "enabled": true }, // logs en el panel (errores de publicación, vigía)
+	"workers_dev": false, // sin URL pública: nada en vivo
+	"preview_urls": false
+}

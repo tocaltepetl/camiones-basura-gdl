@@ -1,0 +1,69 @@
+# Grabador permanente de recorridos (grabador/), aparte del sitio.
+# - En PR: pruebas y `wrangler deploy --dry-run`, sin secretos.
+# - En push a main que toque grabador/ (o a mano): despliega, con aprobación en
+#   «production». Desplegar reinicia el Durable Object: la conexión vuelve sola
+#   en segundos y el hueco queda en el registro de conexiones, pero conviene
+#   aprobarlo fuera del horario de servicio (05:00–21:00 en Guadalajara).
+# Ver docs/decisiones.md («Grabador permanente y datos crudos»).
+name: Grabador
+on:
+  pull_request:
+    paths: ["grabador/**", ".github/workflows/grabador.yml"]
+  push:
+    branches: [main]
+    paths: ["grabador/**", ".github/workflows/grabador.yml"]
+  workflow_dispatch:
+permissions: {}
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: grabador
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pruebas
+        run: node --test 'test/*.test.js'
+      - name: Revisar el bundle y la configuración
+        run: npx -y wrangler@4.160.1 deploy --dry-run --outdir "$RUNNER_TEMP/dist"
+
+  desplegar:
+    needs: probar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://datos.basuragdl.tocaltepetl.org
+    permissions:
+      contents: read
+    concurrency:
+      group: grabador
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: grabador
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Avisar si es horario de servicio
+        run: |
+          h=$(TZ=America/Mexico_City date +%-H)
+          if [ "$h" -ge 5 ] && [ "$h" -lt 21 ]; then
+            echo "::warning::Desplegado a las $h h (Guadalajara), en horario de servicio: reinicia la conexión unos segundos (queda en el registro)."
+          fi
+      - name: Desplegar
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          SHA: ${{ github.sha }}
+        run: npx -y wrangler@4.160.1 deploy --message "grabador ${SHA:0:7}"
+      - name: CORS del bucket (lectura pública desde cualquier sitio)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx -y wrangler@4.160.1 r2 bucket cors set camiones-basura-datos --file cors.json --force
