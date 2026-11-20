@@ -416,7 +416,10 @@ después de las 21:00, vuelve a conectar y observa otros 30 min.
   Los días sin archivo aparecen marcados.
 - **Libre uso**, como los reportes, citando la fuente sin repetir la app key.
   Aviso: son para analizar el servicio, no para vigilar a las cuadrillas.
-- Se sirve desde R2 por `datos.basuragdl.tocaltepetl.org`, con caché larga en
+- Se sirve desde R2 por `datos.basuragdl.tocaltepetl.org`. El índice está en
+  `/index.html`: R2 no sirve un índice en la raíz, y una Redirect Rule de la
+  zona no se aplicó al dominio de R2 (probado el 2026-11-19), así que los
+  enlaces apuntan directo a `/index.html`. Caché larga en
   los archivos de cada día (no cambian) y de 5 min en los índices. CORS
   abierto para lectura.
 - Solo se publica lo que graba este servicio. No se suben grabaciones previas.
