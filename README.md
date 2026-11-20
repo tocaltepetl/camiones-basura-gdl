@@ -79,7 +79,7 @@ Cuenta a quien usó esta guía, no el total de reportes al Ayuntamiento.
 
 ### Recorridos crudos por día
 Todos los mensajes que mandan los camiones, un archivo por día, en
-**https://datos.basuragdl.tocaltepetl.org/** (índice en HTML y en
+**https://datos.basuragdl.tocaltepetl.org/index.html** (índice en HTML y en
 [`index.json`](https://datos.basuragdl.tocaltepetl.org/index.json), con tamaño y
 SHA-256). Sirven para reconstruir rutas y horarios, que el Ayuntamiento no
 publica.
@@ -144,7 +144,7 @@ Sitio: **https://basuragdl.tocaltepetl.org** (Cloudflare Workers, solo archivos
 estáticos). Se publica desde GitHub Actions al liberar una versión; los
 cambios están en los [Releases](https://github.com/tocaltepetl/camiones-basura-gdl/releases).
 
-Grabador: **https://datos.basuragdl.tocaltepetl.org** (Cloudflare Workers con
+Grabador: **https://datos.basuragdl.tocaltepetl.org/index.html** (Cloudflare Workers con
 un Durable Object y R2; código en `grabador/`, configuración aparte en
 `grabador/wrangler.jsonc`). Lo despliega el workflow «Grabador» al hacer merge
 de cambios en `grabador/`. Pruebas: `cd grabador && npm test`.
