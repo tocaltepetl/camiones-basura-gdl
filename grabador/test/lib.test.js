@@ -81,6 +81,16 @@ test("decidir: horario, pausa nocturna adaptativa y medianoche", () => {
   assert.equal(L.decidir(gdl("2026-11-18T00:00"), cfg, { ...s, conectadoDesde: gdl("2026-11-17T05:00"), unidades: 12 }), "fuera");
 });
 
+test("tocaRevisar: una vez al día y reintentos espaciados", () => {
+  const t = gdl("2026-11-21T00:01");
+  assert.equal(L.tocaRevisar(t, { revisado: null, reintentarDesde: 0 }), true);         // primera vez
+  assert.equal(L.tocaRevisar(t, { revisado: "2026-11-20", reintentarDesde: 0 }), true); // día nuevo
+  assert.equal(L.tocaRevisar(t, { revisado: "2026-11-21", reintentarDesde: 0 }), false);
+  assert.equal(L.tocaRevisar(gdl("2026-11-21T23:59"), { revisado: "2026-11-21" }), false);
+  assert.equal(L.tocaRevisar(t, { revisado: "2026-11-20", reintentarDesde: t + 1 }), false); // espera
+  assert.equal(L.tocaRevisar(t, { revisado: "2026-11-20", reintentarDesde: t }), true);
+});
+
 test("minutos conectado según el registro", () => {
   const d = L.epochGDL("2026-11-17"), f = L.epochGDL("2026-11-18");
   const ev = [

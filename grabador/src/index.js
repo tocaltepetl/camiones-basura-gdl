@@ -65,6 +65,7 @@ export class Grabador extends DurableObject {
     this.suscritos = 0;
     this.unidades = new Map();   // vehículo → último mensaje (para la pausa nocturna)
     this.cola = Promise.resolve(); // ver mantener()
+    this.compactadoEn = null;    // "dia|hora" de la última compactación (ver mantener())
     ctx.blockConcurrencyWhile(async () => {
       this.crearTablas();
       this.canalMax = Number(this.kv("canal_max") ?? 0);
@@ -253,17 +254,32 @@ export class Grabador extends DurableObject {
   }
 
   /** Guardar, compactar, publicar y purgar, de uno en uno: la compresión es
-   *  asíncrona y otro evento podría compactar las mismas filas dos veces. */
+   *  asíncrona y otro evento podría compactar las mismas filas dos veces.
+   *
+   *  Corre con cada alarma (cada minuto mientras hay conexión), pero compactar
+   *  solo hace falta al cambiar la hora y publicar/purgar al cambiar el día: las
+   *  consultas que buscan qué falta recorren tablas enteras, y hacerlas cada
+   *  minuto agotó las 5 M de filas leídas al día del plan gratuito (21-nov). */
   mantener(t) {
     const tarea = this.cola.then(async () => {
       this.guardar();
       try {
-        await this.compactar(t);
+        const hora = `${L.diaGDL(t)}|${Math.floor(L.horaGDL(t))}`;
+        if (this.compactadoEn !== hora) {
+          await this.compactar(t);
+          this.compactadoEn = hora;
+        }
+        const hoy = L.diaGDL(t);
+        if (!L.tocaRevisar(t, { revisado: this.kv("revisado"), reintentarDesde: Number(this.kv("reintentar_desde") ?? 0) }))
+          return this.kv("revisado") !== hoy;
         const pendiente = await this.publicarPendientes(t);
         this.purgar(t);
+        if (pendiente) this.kvSet("reintentar_desde", t + REINTENTO_PUBLICAR_MS);
+        else { this.kvSet("revisado", hoy); this.kvSet("reintentar_desde", null); }
         return pendiente;
       } catch (e) {
         console.error("grabador:", e?.stack ?? e);
+        this.kvSet("reintentar_desde", t + REINTENTO_PUBLICAR_MS);
         return true;
       }
     });
@@ -277,7 +293,11 @@ export class Grabador extends DurableObject {
     if (pendiente) x = Math.min(x, t + REINTENTO_PUBLICAR_MS);
     // Hay datos de hoy: despertar justo después de medianoche para publicar el día.
     const hoy = L.diaGDL(t);
-    const hayHoy = this.sql.exec("SELECT 1 FROM lote WHERE dia = ? UNION SELECT 1 FROM hora WHERE dia = ? UNION SELECT 1 FROM conexion WHERE dia = ? LIMIT 1", hoy, hoy, hoy).toArray().length;
+    // EXISTS se detiene en la primera fila (UNION leía todas las de hoy).
+    const hayHoy = this.sql.exec(
+      `SELECT EXISTS (SELECT 1 FROM lote WHERE dia = ?1) OR EXISTS (SELECT 1 FROM hora WHERE dia = ?1)
+         OR EXISTS (SELECT 1 FROM conexion WHERE dia = ?1) AS x`, hoy,
+    ).one().x;
     if (hayHoy) x = Math.min(x, L.epochGDL(L.diaSiguiente(hoy)) + L.MINUTO);
     return x;
   }
