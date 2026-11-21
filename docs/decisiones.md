@@ -393,6 +393,7 @@ después de las 21:00, vuelve a conectar y observa otros 30 min.
 | Duración del Durable Object | 13,000 GB-s (se reinicia a las 00:00 UTC = 18:00 GDL) | 16–19 h × 0.125 GB ≈ 7,200–8,600 GB-s (55–66 %). Conectado 24 h serían ~11,000 (85 %) |
 | Peticiones al Durable Object | 100,000 | mensajes ÷ 20 ≈ 11,700 + alarmas ~1,200 + cron 288 |
 | Filas escritas en SQLite | 100,000 | ~14,000 (lotes, borrados, alarmas, registro) |
+| Filas leídas en SQLite | 5,000,000 | unos miles: compactar una vez por hora y buscar días por publicar una vez al día (ver abajo) |
 | Almacenamiento del Durable Object | 5 GB | ≤ 30 MB (la hora en curso + 3 días de respaldo) |
 | CPU | 30 s por evento | gzip de una hora (≤ 22 MB) ≈ décimas de segundo |
 | R2 | 10 GB-mes, 1 M escrituras y 10 M lecturas al mes | ~5.5–6 GB al año; 3 escrituras al día |
@@ -401,6 +402,14 @@ después de las 21:00, vuelve a conectar y observa otros 30 min.
   mensajes que llegan a sockets *aceptados* por el Durable Object, pero no dice
   cómo cuenta los de una conexión *saliente*. Si contaran 1:1, no cabría y
   haría falta el plan de US$5 al mes. Se revisa en las métricas del panel.
+- **Filas leídas (21-nov):** no estaban en estas cuentas y fue el primer límite
+  que se agotó, en el segundo día completo. Cada alarma (cada minuto mientras hay
+  conexión) buscaba días por publicar con una consulta que recorre el registro
+  de conexiones de los días en respaldo, y compactaba con un `GROUP BY` sobre
+  `lote`. Ahora compactar corre solo al cambiar la hora, y la búsqueda y la
+  purga, una vez por día de Guadalajara (si algo queda pendiente, se reintenta
+  cada 15 min). Cuando se agota, las consultas fallan hasta las 00:00 UTC
+  (18:00 GDL) y lo de esas horas se pierde.
 - R2 se llena en ~1.5 años. Después: pagar el excedente (US$0.015 por GB al
   mes) o mover los años viejos a otro lado.
 

@@ -106,6 +106,16 @@ export function decidir(t, cfg, s) {
 }
 
 /**
+ * ¿Toca buscar días por publicar? Una vez por día de Guadalajara (`revisado` es
+ * el último día ya revisado sin pendientes) y, si algo quedó pendiente, no antes
+ * de `reintentarDesde`. Buscarlos recorre el registro de conexiones de varios
+ * días: hacerlo en cada alarma agota las filas leídas del plan gratuito.
+ */
+export function tocaRevisar(t, s) {
+  return s.revisado !== diaGDL(t) && t >= (s.reintentarDesde || 0);
+}
+
+/**
  * Minutos conectado (con `established`) dentro de [desde, hasta), a partir del
  * registro de conexiones del día. Lo que corta la conexión: close, error,
  * pausa, inicio (reinicio del objeto) y fin.
