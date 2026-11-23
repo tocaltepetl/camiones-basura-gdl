@@ -410,6 +410,19 @@ después de las 21:00, vuelve a conectar y observa otros 30 min.
   purga, una vez por día de Guadalajara (si algo queda pendiente, se reintenta
   cada 15 min). Cuando se agota, las consultas fallan hasta las 00:00 UTC
   (18:00 GDL) y lo de esas horas se pierde.
+- **Parámetros por consulta (23-nov):** el ajuste del 21-nov no bastó: siguió
+  agotándose cada día y no se publicó ningún día. La causa de fondo: compactar
+  borraba los lotes de la hora con `DELETE … WHERE id IN (?, ?, …)`, un
+  parámetro por lote, y una consulta admite como mucho 100 (límite de SQLite en
+  Durable Objects). Una hora con conexión tiene ~360 lotes, así que fallaba
+  siempre, se revertía y `lote` crecía ~6–8 mil filas al día. Esa tabla se
+  recorría cada minuto (reintentos) y cada 5 min (el constructor, al despertar
+  el cron). Ahora se borra por rango (`dia`, `hora`, `id <= máximo`), un atraso
+  se compacta de 6 horas en 6, un error se reintenta a la hora siguiente y el
+  constructor lee una sola fila. Lo que estaba en `lote` no se perdió y se
+  publica al ponerse al día. Sí se perdieron las horas en que el límite estaba
+  agotado: 21-nov 13–18 h, 22-nov 8–18 h y 23-nov desde las 7 h (quedan como
+  huecos en `minutos_conectado` y en el registro de conexiones).
 - R2 se llena en ~1.5 años. Después: pagar el excedente (US$0.015 por GB al
   mes) o mover los años viejos a otro lado.
 
