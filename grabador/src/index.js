@@ -21,6 +21,7 @@ const PING_MS = 60 * L.SEGUNDO;       // sin tráfico → ping (el servidor cort
 const MUERTO_MS = 120 * L.SEGUNDO;    // sin tráfico ni respuesta al ping → reconectar
 const ALARMA_MS = L.MINUTO;           // mientras está conectado (mantiene vivo el objeto)
 const REINTENTO_PUBLICAR_MS = 15 * L.MINUTO;
+const COMPACTAR_MAX = 6;              // horas por llamada: un atraso se pone al día de a poco
 const WS_NORMAL = 1000;
 
 const GZ = {
@@ -66,12 +67,14 @@ export class Grabador extends DurableObject {
     this.unidades = new Map();   // vehículo → último mensaje (para la pausa nocturna)
     this.cola = Promise.resolve(); // ver mantener()
     this.compactadoEn = null;    // "dia|hora" de la última compactación (ver mantener())
+    this.compactarMas = false;   // quedaron horas por compactar (ver compactar())
     ctx.blockConcurrencyWhile(async () => {
       this.crearTablas();
       this.canalMax = Number(this.kv("canal_max") ?? 0);
-      this.ultimoMsg = this.sql.exec(
-        "SELECT max(t) AS t FROM (SELECT max(t1) AS t FROM lote UNION ALL SELECT max(t1) FROM hora)",
-      ).one().t ?? 0;
+      // La última fila de cada tabla (una lectura) y no max(t1), que recorre la tabla
+      // entera: el cron despierta al objeto cada 5 min y cada vez corre el constructor.
+      const ultimo = (tabla) => this.sql.exec(`SELECT t1 FROM ${tabla} ORDER BY id DESC LIMIT 1`).toArray()[0]?.t1 ?? 0;
+      this.ultimoMsg = Math.max(ultimo("lote"), ultimo("hora"));
       const t = Date.now();
       // Un reinicio en horario es un hueco: queda en el registro con lo último guardado.
       if (this.accion(t) === "conectar") this.evento("inicio", { datos_hasta: this.ultimoMsg || null });
@@ -266,8 +269,11 @@ export class Grabador extends DurableObject {
       try {
         const hora = `${L.diaGDL(t)}|${Math.floor(L.horaGDL(t))}`;
         if (this.compactadoEn !== hora) {
-          await this.compactar(t);
-          this.compactadoEn = hora;
+          try { this.compactarMas = await this.compactar(t); }
+          catch (e) { console.error("compactar:", e?.stack ?? e); this.compactarMas = false; }
+          // Un error se reintenta a la hora siguiente, no cada minuto: cada intento
+          // recorre `lote`, y reintentar cada minuto agotó las filas leídas (19 al 23-nov).
+          if (!this.compactarMas) this.compactadoEn = hora;
         }
         const hoy = L.diaGDL(t);
         if (!L.tocaRevisar(t, { revisado: this.kv("revisado"), reintentarDesde: Number(this.kv("reintentar_desde") ?? 0) }))
@@ -288,7 +294,7 @@ export class Grabador extends DurableObject {
   }
 
   siguienteAlarma(t, a, pendiente) {
-    if (a === "conectar" || this.ws) return t + ALARMA_MS;
+    if (a === "conectar" || this.ws || this.compactarMas) return t + ALARMA_MS;
     let x = L.siguienteHora(t, this.cfg.conecta);
     if (pendiente) x = Math.min(x, t + REINTENTO_PUBLICAR_MS);
     // Hay datos de hoy: despertar justo después de medianoche para publicar el día.
@@ -302,26 +308,30 @@ export class Grabador extends DurableObject {
     return x;
   }
 
-  /** Cada hora ya terminada → un miembro gzip en `hora`. */
+  /** Cada hora ya terminada → un miembro gzip en `hora`, hasta COMPACTAR_MAX horas
+   *  por llamada. Devuelve true si quedaron horas por compactar. */
   async compactar(t) {
     const actual = `${L.diaGDL(t)}|${Math.floor(L.horaGDL(t))}`;
-    const grupos = this.sql.exec("SELECT dia, hora FROM lote GROUP BY dia, hora ORDER BY dia, hora").toArray()
+    const grupos = this.sql.exec("SELECT dia, hora, max(id) AS hasta FROM lote GROUP BY dia, hora ORDER BY dia, hora").toArray()
       .filter((g) => `${g.dia}|${g.hora}` !== actual);
-    for (const { dia, hora } of grupos) {
-      const filas = this.sql.exec("SELECT id, n, t1, canales, vehiculos FROM lote WHERE dia = ? AND hora = ? ORDER BY id", dia, hora).toArray();
+    for (const { dia, hora, hasta } of grupos.slice(0, COMPACTAR_MAX)) {
+      const filas = this.sql.exec("SELECT id, n, t1, canales, vehiculos FROM lote WHERE dia = ? AND hora = ? AND id <= ? ORDER BY id", dia, hora, hasta).toArray();
       const gz = await gzip(filas.map((f) => () => this.sql.exec("SELECT texto FROM lote WHERE id = ?", f.id).one().texto));
       const canales = new Set(), vehiculos = new Set();
       for (const f of filas) { JSON.parse(f.canales).forEach((c) => canales.add(c)); JSON.parse(f.vehiculos).forEach((v) => vehiculos.add(v)); }
-      const ids = filas.map((f) => f.id);
       this.ctx.storage.transactionSync(() => {
         this.sql.exec(
           "INSERT INTO hora (dia, hora, n, t1, canales, vehiculos, gz) VALUES (?, ?, ?, ?, ?, ?, ?)",
           dia, hora, filas.reduce((s, f) => s + f.n, 0), Math.max(...filas.map((f) => f.t1)),
           JSON.stringify([...canales]), JSON.stringify([...vehiculos]), gz.buffer,
         );
-        this.sql.exec(`DELETE FROM lote WHERE id IN (${ids.map(() => "?").join(",")})`, ...ids);
+        // Por rango y no con `id IN (?, ?, …)`: una hora conectada tiene ~360 lotes y una
+        // consulta admite como mucho 100 parámetros. Eso hacía fallar toda hora con
+        // conexión, revertía el INSERT y dejaba crecer `lote` (19 al 23-nov).
+        this.sql.exec("DELETE FROM lote WHERE dia = ? AND hora = ? AND id <= ?", dia, hora, hasta);
       });
     }
+    return grupos.length > COMPACTAR_MAX;
   }
 
   /** Publica los días cerrados que falten. Devuelve true si alguno quedó pendiente. */
