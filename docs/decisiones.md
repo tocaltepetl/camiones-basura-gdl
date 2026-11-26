@@ -468,3 +468,96 @@ graben lo mismo (`grabador/herramientas/conteo.py`). Después, esa se apaga.
 Borrar el Worker `camiones-basura-grabador` (con su Durable Object) en el panel
 y quitar `grabador/` y el workflow. Lo publicado en R2 se puede dejar o borrar
 con el bucket. El sitio no depende de nada de esto.
+
+---
+
+## Horario aproximado y detector de anomalías (2026-11-26, issue #24)
+
+Con dos semanas de recorridos ya se puede decir **entre qué horas** suele pasar
+el camión en la mitad de los puntos. Se publica como «horario aproximado», con
+rangos y un aviso de qué tan estable es, nunca como hora exacta.
+
+### Antes de avanzar: lo que ya existe (2026-11-26)
+- **Datos abiertos y portal de transparencia de Guadalajara:** no hay un
+  catálogo descargable de rutas, colonias y horarios. Se encontró la iniciativa
+  de un regidor (punto 197/25) para publicar las rutas diarias por unidad,
+  kilometraje y combustible, sin indicio de que ya esté publicada.
+- **Guadalajara App:** según la prensa (UnoTV), la app dice mostrar a qué hora
+  sacar la basura en cada colonia y avisar cuando el camión se acerca. Es la
+  misma fuente de la que viene la señal en vivo. Falta revisar en la app si de
+  verdad muestra un horario por colonia y cuál; si lo hace, conviene
+  compararlo con lo observado.
+- **Buscador de la PNT** («horario rutas recolección basura Guadalajara»,
+  «rutas de recolección Guadalajara»): 1 solicitud, de otro municipio (Unión de
+  Tula), sin relación. Ninguna previa al Ayuntamiento de Guadalajara sobre
+  rutas u horarios.
+- **Solicitud propia** (`docs/solicitudes/2026-11-14-…`): sigue en borrador, sin
+  enviar. Pide el catálogo de rutas con días y horarios.
+
+### Qué se observó y por qué el método
+Con 10 días de servicio (12 al 25 de noviembre):
+- **El lunes siempre es día cargado.** Después de un solo día sin servicio (el
+  domingo) las rutas duran ~1.4 veces lo normal (10 h contra 7), terminan hacia
+  las 17:15 y pasan 20–40 min más tarde. Después de dos días sin servicio
+  (domingo y feriado), igual o peor, y el día siguiente todavía sale largo.
+  Por eso hay dos horarios: «martes a sábado» y «lunes y después de feriado».
+- **La hora en un punto varía**: en la mitad de los puntos, ±20 min o menos;
+  en una quinta parte, más de ±45 min. Por eso rangos y tres niveles.
+- **El 24 y 25 de noviembre, 16 a 19 rutas empezaron 3–7 h tarde**: algunas con
+  un camión sustituto que salió por la tarde, otras con su camión que no mandó
+  señal hasta las 10–11 h. Esos días de esa ruta no cuentan para el horario y
+  el detector los avisa.
+
+### Cómo funciona
+- `horarios/horarios.py` (solo biblioteca estándar): resume cada día crudo en
+  la primera hora en que cada ruta pasó **recolectando** (a menos de 15 km/h:
+  lo más rápido es ir de paso o a descargar) por cada cuadro de ~80 m, y de ahí
+  recalcula todo desde cero: el horario con las últimas 6 semanas y las
+  anomalías de cada día contra los días anteriores. Sin estado que mantener:
+  si una ruta cambia, el horario se acomoda solo y mientras tanto se avisa.
+  Parámetros al inicio del archivo; método en el README.
+- **Workflow «Horarios»**, cada noche a las 01:30 (después de que el grabador
+  publica el día): publica `horarios.json`, `anomalias.json` y el resumen de
+  cada día en `datos.basuragdl.tocaltepetl.org/horarios/`. La página lo lee de
+  ahí: actualizar el horario **no requiere desplegar el sitio**.
+- **Ambiente `datos`, sin aprobación**, con una llave de R2 que solo lee y
+  escribe objetos del bucket. El token de `production` no sirve: pide
+  aprobación en cada corrida y tiene más permisos de los necesarios.
+- **Avisos por ntfy** (secreto opcional `NTFY_TOPIC` en el ambiente) solo de lo
+  de nivel alto: datos incompletos, 10 o más rutas tarde o por otras calles,
+  una ruta 3 días seguidos por otras calles, muchas rutas sin salir.
+- **Semilla:** `horarios/semilla/` tiene los resúmenes del 12 al 23 de
+  noviembre, sacados de la grabación de prueba (el grabador de Cloudflare
+  empezó el 19 y perdió casi todo el 23). Son resúmenes por ruta y cuadro, no
+  los mensajes crudos.
+- **Privacidad:** la página baja el archivo completo y busca el punto en el
+  navegador; nada sale de ahí. Todas las rutas se muestran igual.
+
+### Por ruta y con el recorrido, no por punto (2026-11-26)
+La primera versión pintaba en el mapa un punto por cuadro con la hora de todas
+las rutas mezcladas: se veía una nube difícil de leer y no respondía «¿por
+dónde va mi camión y a qué hora?». Ahora la página es **por ruta**: se elige
+la ruta (o se toca la calle y se elige la que pasa ahí) y se dibuja **el
+recorrido real de su día típico** como línea coloreada por hora, con
+etiquetas cada media hora. Se eligió un día real y no una línea «promedio»
+porque promediar recorridos produce calles que no existen; el día típico es
+el normal cuyas horas por cuadro quedaron más cerca de la mediana, y la
+página dice cuál fue. Solo se dibujan los tramos recolectando (los viajes a
+descargar dejarían rayas por avenidas que no son servicio). Los rangos de
+horas siguen saliendo de las 6 semanas, no de ese día.
+- Costo: el resumen diario guarda además la traza simplificada (~180 KB en
+  gzip por día contra ~60 KB); la semilla pasa de 0.5 a 1.5 MB. Cada ruta es
+  un archivo de unos 4 KB y la página baja solo el de la ruta que se ve.
+- Si una ruta no tiene día típico (pocos días), se dibujan sus puntos.
+
+### Para activarlo (una sola vez)
+1. En Cloudflare: R2 → Manage API tokens → Create API token, permiso
+   **Object Read & Write** solo para el bucket `camiones-basura-datos`.
+2. En GitHub, ambiente `datos` (Settings → Environments): secretos
+   `R2_ACCESS_KEY_ID` y `R2_SECRET_ACCESS_KEY` con lo que da el paso 1, y
+   opcional `NTFY_TOPIC`.
+3. Correr el workflow a mano una vez (Actions → Horarios → Run workflow).
+
+### Cómo revertir
+Quitar el botón de la página y el workflow. Lo publicado en
+`horarios/` del bucket se puede borrar sin afectar al grabador ni al sitio.
