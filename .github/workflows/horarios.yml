@@ -76,6 +76,9 @@ jobs:
           aws s3 sync "$RES" "$DESTINO/dias" --endpoint-url "$R2" --size-only --no-progress \
             --exclude '*' --include '*.json.gz' \
             --content-type application/gzip --cache-control 'public, max-age=86400'
+          # Recorrido del día típico de cada ruta (la página baja solo el que se ve).
+          aws s3 sync "$SAL/rutas" "$DESTINO/rutas" --endpoint-url "$R2" --no-progress --delete \
+            --content-type 'application/json; charset=utf-8' --cache-control 'public, max-age=3600'
           for f in horarios.json anomalias.json; do
             aws s3 cp "$SAL/$f" "$DESTINO/$f" --endpoint-url "$R2" --no-progress \
               --content-type 'application/json; charset=utf-8' --cache-control 'public, max-age=3600'

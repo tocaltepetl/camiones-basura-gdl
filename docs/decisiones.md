@@ -533,6 +533,23 @@ Con 10 días de servicio (12 al 25 de noviembre):
 - **Privacidad:** la página baja el archivo completo y busca el punto en el
   navegador; nada sale de ahí. Todas las rutas se muestran igual.
 
+### Por ruta y con el recorrido, no por punto (2026-11-26)
+La primera versión pintaba en el mapa un punto por cuadro con la hora de todas
+las rutas mezcladas: se veía una nube difícil de leer y no respondía «¿por
+dónde va mi camión y a qué hora?». Ahora la página es **por ruta**: se elige
+la ruta (o se toca la calle y se elige la que pasa ahí) y se dibuja **el
+recorrido real de su día típico** como línea coloreada por hora, con
+etiquetas cada media hora. Se eligió un día real y no una línea «promedio»
+porque promediar recorridos produce calles que no existen; el día típico es
+el normal cuyas horas por cuadro quedaron más cerca de la mediana, y la
+página dice cuál fue. Solo se dibujan los tramos recolectando (los viajes a
+descargar dejarían rayas por avenidas que no son servicio). Los rangos de
+horas siguen saliendo de las 6 semanas, no de ese día.
+- Costo: el resumen diario guarda además la traza simplificada (~180 KB en
+  gzip por día contra ~60 KB); la semilla pasa de 0.5 a 1.5 MB. Cada ruta es
+  un archivo de unos 4 KB y la página baja solo el de la ruta que se ve.
+- Si una ruta no tiene día típico (pocos días), se dibujan sus puntos.
+
 ### Para activarlo (una sola vez)
 1. En Cloudflare: R2 → Manage API tokens → Create API token, permiso
    **Object Read & Write** solo para el bucket `camiones-basura-datos`.

@@ -62,6 +62,9 @@ TIPICO_FRACCION = 0.4             # recorrido típico: cuadros vistos en ≥40 %
 MUCHAS_RUTAS = 10                 # a partir de aquí, un aviso por ruta se vuelve aviso del día
 CAMBIO_PERSISTENTE = 3            # días seguidos con calles nuevas: cambio de ruta
 HISTORIAL_DIAS = 90
+VERSION_RESUMEN = 2         # sube si cambia el resumen diario: los publicados más viejos se rehacen
+TRAZA_TOLERANCIA_M = 8            # simplificación de la traza (Douglas-Peucker)
+TRAZA_PUNTOS_MIN = 3              # tramos más cortos no se guardan
 BASE = "https://datos.basuragdl.tocaltepetl.org/"
 UA = {"User-Agent": "camiones-basura-gdl-horarios (+https://github.com/tocaltepetl/camiones-basura-gdl)"}
 
@@ -103,12 +106,44 @@ def dia_de(fecha):
 
 
 # ---------- 1. resumir un día ----------
+def simplificar(pts, tol=TRAZA_TOLERANCIA_M):
+    """Douglas-Peucker sobre [lat, lng, minuto] (iterativo)."""
+    if len(pts) < 3:
+        return pts
+    guardar = [False] * len(pts)
+    guardar[0] = guardar[-1] = True
+    pila = [(0, len(pts) - 1)]
+    while pila:
+        a, b = pila.pop()
+        la, ga = pts[a][0], pts[a][1]
+        kx = 111320 * math.cos(math.radians(la))
+        bx, by = (pts[b][1] - ga) * kx, (pts[b][0] - la) * 110540
+        largo = math.hypot(bx, by)
+        peor, k = -1, None
+        for i in range(a + 1, b):
+            px, py = (pts[i][1] - ga) * kx, (pts[i][0] - la) * 110540
+            d = abs(bx * py - by * px) / largo if largo else math.hypot(px, py)
+            if d > peor:
+                peor, k = d, i
+        if k is not None and peor > tol:
+            guardar[k] = True
+            pila += [(a, k), (k, b)]
+    return [q for q, g in zip(pts, guardar) if g]
+
+
 def resumir(ruta_crudo, dia=None):
     """Resumen de un día crudo. dia: AAAA-MM-DD (por omisión, el del nombre del archivo)."""
     dia = dia or os.path.basename(ruta_crudo).split("mensajes-")[-1][:10]
     ultimo = {}       # vehículo → (lat, lng, minuto)
     rutas = {}        # ruta → {"celdas": {(i, j): minuto}, "ini", "fin", "n"}
     bloques = set()   # bloques de 10 min con algún mensaje
+    tramo = {}        # vehículo → tramo recolectando en curso [[lat, lng, minuto], …]
+    tramos = {}       # ruta → tramos cerrados
+
+    def cerrar(v):
+        t = tramo.pop(v, None)
+        if t and len(t) >= TRAZA_PUNTOS_MIN:
+            tramos.setdefault(v[0], []).append(t)
     mensajes = 0
     with abrir(ruta_crudo) as f:
         for linea in f:
@@ -133,22 +168,30 @@ def resumir(ruta_crudo, dia=None):
                 continue
             ultimo[v] = (lat, lng, mi)
             if not p or mi <= p[2] or mi - p[2] > SALTO_MAX_MIN:
+                cerrar(v)
                 continue
             kmh = metros(p[0], p[1], lat, lng) / ((mi - p[2]) * 60) * 3.6
             if kmh > VEL_RECOLECCION_KMH:
+                cerrar(v)
                 continue
+            tramo.setdefault(v, [list(p)]).append([lat, lng, mi])
             d = rutas.setdefault(ruta, {"celdas": {}, "ini": mi, "fin": mi, "n": 0})
             d["n"] += 1
             d["ini"], d["fin"] = min(d["ini"], mi), max(d["fin"], mi)
             c = (round(lat / CELDA_LAT), round(lng / CELDA_LNG))
             if c not in d["celdas"] or mi < d["celdas"][c]:
                 d["celdas"][c] = mi
+    for v in list(tramo):
+        cerrar(v)
     a, b = BLOQUE_SIN_DATOS
     sin_datos = sum(10 for k in range(a // 10, b // 10) if k not in bloques)
     return {
-        "version": 1, "dia": dia, "mensajes": mensajes, "minutos_sin_datos": sin_datos,
+        "version": VERSION_RESUMEN, "dia": dia, "mensajes": mensajes, "minutos_sin_datos": sin_datos,
         "rutas": {ruta: {"ini": round(d["ini"]), "fin": round(d["fin"]),
-                         "celdas": sorted([i, j, round(mi)] for (i, j), mi in d["celdas"].items())}
+                         "celdas": sorted([i, j, round(mi)] for (i, j), mi in d["celdas"].items()),
+                         # Tramos recolectando, simplificados: [[lat, lng, minuto], …]
+                         "traza": [[[round(la, 5), round(lg, 5), round(mi)] for la, lg, mi in simplificar(t)]
+                                   for t in sorted(tramos.get(ruta, []), key=lambda t: t[0][2])]}
                   for ruta, d in sorted(rutas.items()) if d["n"] >= PUNTOS_RUTA_MIN},
     }
 
@@ -254,11 +297,29 @@ def perfil(res, info, hasta):
         puntos.append([i, j, ruta, a, b, nv, ca, cb])
         por_ruta.setdefault(ruta, []).append(b - a)
     puntos.sort(key=lambda p: (p[2], p[0], p[1]))
+    # Día típico de cada ruta: el día normal cuyas horas se parecen más a las medianas.
+    med = {k: st.median(v) for k, v in vn.items() if len(v) >= DIAS_MIN}
+    trazas = {}
+    for ruta in {k[0] for k in med}:
+        mejor = None
+        for d in normales:
+            x = res[d]["rutas"].get(ruta)
+            if not x or not x.get("traza") or x["ini"] - inicio.get(ruta, x["ini"]) >= INICIO_TARDE:
+                continue
+            difs = [abs(mi - med[(ruta, i, j)]) for i, j, mi in x["celdas"] if (ruta, i, j) in med]
+            if len(difs) < 20:
+                continue
+            score = (st.median(difs), -len(difs))
+            if mejor is None or score < mejor[0]:
+                mejor = (score, d)
+        if mejor:
+            trazas[ruta] = {"dia": mejor[1], "traza": res[mejor[1]]["rutas"][ruta]["traza"]}
     rutas = {}
     for ruta, anchos in sorted(por_ruta.items()):
         m = st.median(anchos)
         rutas[ruta] = {"puntos": len(anchos), "ancho_mediano": round(m),
-                       "nivel": _nivel(0, m), "retraso_cargado": retraso.get(ruta)}
+                       "nivel": _nivel(0, m), "retraso_cargado": retraso.get(ruta),
+                       "dia_tipico": trazas.get(ruta, {}).get("dia")}
     excluidos = [{"dia": d, "motivo": "datos incompletos" if info[d]["incompleto"] else "día atípico"}
                  for d in ventana if info[d]["servicio"] and (info[d]["incompleto"] or info[d].get("atipico"))]
     return {
@@ -267,7 +328,7 @@ def perfil(res, info, hasta):
         "dias": {"normal": normales, "cargado": cargados, "excluidos": excluidos},
         "rutas": rutas,
         "puntos": puntos,
-        "_vn": vn, "_inicio": inicio,  # para el detector; no se publica
+        "_vn": vn, "_inicio": inicio, "_trazas": trazas,  # no se publican aquí
     }
 
 
@@ -397,6 +458,7 @@ def actualizar(dir_res, dir_sal, hasta=None):
         prev = perfil(res, info, ayer)
         historial.append(anomalias_dia(res, info, d, prev, historial))
     hor = perfil(res, info, hasta)
+    trazas = hor.pop("_trazas")
     del hor["_vn"], hor["_inicio"]
     generado = datetime.now(timezone.utc).isoformat(timespec="seconds")
     comunes = {
@@ -412,6 +474,11 @@ def actualizar(dir_res, dir_sal, hasta=None):
                           "nivel_estable_min": NIVEL_ESTABLE, "nivel_aproximado_min": NIVEL_APROX},
            "columnas": ["i", "j", "ruta", "ini", "fin", "nivel", "ini_cargado", "fin_cargado"]}
     escribir_json(os.path.join(dir_sal, "horarios.json"), hor, compacto=True)
+    # Recorrido del día típico de cada ruta, un archivo por ruta (la página baja solo el que se ve).
+    for ruta, t in trazas.items():
+        escribir_json(os.path.join(dir_sal, "rutas", f"{ruta}.json"),
+                      {"ruta": ruta, "dia": t["dia"], "columnas": ["lat", "lng", "minuto"], "tramos": t["traza"],
+                       "fuente": comunes["fuente"], "licencia": comunes["licencia"]}, compacto=True)
     anom = {**comunes,
             "umbrales": {"carga_atipica": CARGA_ATIPICA, "calles_nuevas": CALLES_NUEVAS,
                          "cobertura_baja": COBERTURA_BAJA, "retraso_min": RETRASO_MIN,
@@ -473,8 +540,10 @@ def sincronizar(dir_res, base=BASE, nuevos=None, tmp=None):
         if d < desde or os.path.exists(dest):
             continue
         if bajar(f"{base}horarios/dias/{d}.json.gz", dest):
-            print(f"{d}: resumen publicado", file=sys.stderr)
-            continue
+            if leer_json(dest).get("version", 1) >= VERSION_RESUMEN:
+                print(f"{d}: resumen publicado", file=sys.stderr)
+                continue
+            os.remove(dest)   # resumen de una versión anterior: se rehace del crudo
         crudo = os.path.join(tmp, f"mensajes-{d}.jsonl.gz")
         if not bajar(x["mensajes_url"], crudo):
             print(f"{d}: sin crudo", file=sys.stderr)

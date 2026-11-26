@@ -31,11 +31,13 @@ está documentada y puede fallar o cambiar sin aviso.
 - **Reportes**: mapa de calor y totales de los reportes hechos con la guía.
   Solo se cuenta, de forma anónima y desactivable, el tipo de falla, el
   municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
-- **Horario aproximado** (menú «Más», o el enlace `/?horario`): tocas tu calle
-  y dice entre qué horas suele pasar cada ruta, en días normales y en lunes o
-  días después de feriado, con qué tan estable es. Se calcula cada noche con
-  los recorridos publicados (ver [Horario aproximado](#horario-aproximado)).
-  El archivo se baja completo: el punto no sale del navegador.
+- **Horario aproximado** (menú «Más», o el enlace `/?horario`, `/?horario=50`):
+  eliges una ruta, o tocas tu calle y se elige sola, y dibuja su recorrido
+  de un día típico coloreado por hora, con entre qué horas suele pasar por tu
+  calle en días normales y en lunes o días después de feriado, y qué tan
+  estable es. Se calcula cada noche con los recorridos publicados (ver
+  [Horario aproximado](#horario-aproximado)). El horario se baja completo: el
+  punto no sale del navegador.
 - **Exige el mapa oficial y datos abiertos** (menú «Más», o el enlace
   `/?exige`): el mapa oficial, tequierolimpia.guadalajara.gob.mx, no funciona.
   La ficha invita a pedir al Ayuntamiento que lo arregle y que publique la
@@ -163,9 +165,16 @@ raro. Publica en `https://datos.basuragdl.tocaltepetl.org/horarios/`:
   otras calles (`calles_nuevas`; `cambio_de_ruta` si pasa 3 días seguidos), que
   cubrieron poco, que pasaron tarde, días cargados sin explicación y días con
   datos incompletos. Las de nivel `alta` llegan como aviso por ntfy.
+  En `rutas`, por ruta: cuántos puntos tiene, su nivel, cuánto se atrasa en
+  día cargado y su `dia_tipico`.
+- **`rutas/<ruta>.json`**: el recorrido real de la ruta en su **día típico**
+  (el día normal cuyas horas por cuadro quedaron más cerca de la mediana), en
+  `tramos`: listas de `[lat, lng, minuto]`. Solo los tramos recolectando, sin
+  los viajes a descargar, simplificados a ~8 m. Es lo que dibuja la página.
 - **`dias/AAAA-MM-DD.json.gz`**: el resumen de cada día del que sale todo: por
-  ruta, inicio, fin y la primera hora en que pasó **recolectando** (a menos de
-  15 km/h) por cada cuadro.
+  ruta, inicio, fin, la primera hora en que pasó **recolectando** (a menos de
+  15 km/h) por cada cuadro y la traza simplificada de esos tramos (`version`
+  2; los de versión anterior se rehacen del crudo).
 
 **Cómo se calcula.** Un punto se publica si se vio al menos 4 días normales. El
 rango deja fuera el 20 % de días más tempranos y el 20 % más tardíos, y se

@@ -105,11 +105,14 @@ class Actualizar(unittest.TestCase):
         def leer(n):
             with open(os.path.join(sal, n), encoding="utf-8") as f:
                 return json.load(f)
+        self.ultima_salida = sal
         return leer("horarios.json"), leer("anomalias.json"), os.path.exists(os.path.join(sal, "aviso.txt"))
 
     @classmethod
     def setUpClass(cls):
-        cls.hor, cls.anom, cls.aviso = cls().armar()
+        t = cls()
+        cls.hor, cls.anom, cls.aviso = t.armar()
+        cls.sal = t.ultima_salida
 
     def test_clasifica_dias(self):
         tipos = {d["dia"]: d["tipo"] for d in self.anom["dias"]}
@@ -128,6 +131,19 @@ class Actualizar(unittest.TestCase):
         self.assertGreaterEqual(ca, a)   # el lunes pasa más tarde
         self.assertNotIn("_vn", self.hor)
 
+    def test_recorrido_del_dia_tipico(self):
+        with open(os.path.join(self.sal, "rutas", "7.json"), encoding="utf-8") as f:
+            r = json.load(f)
+        normales = set(self.hor["dias"]["normal"])
+        self.assertIn(r["dia"], normales)
+        self.assertEqual(self.hor["rutas"]["7"]["dia_tipico"], r["dia"])
+        tramo = r["tramos"][0]
+        self.assertEqual(len(tramo), 2)        # una calle recta queda en sus dos extremos
+        mins = [p[2] for p in tramo]
+        self.assertEqual(mins, sorted(mins))
+        self.assertAlmostEqual(tramo[0][0], LAT0 + 7 * 0.02, delta=0.001)
+        self.assertGreater(mins[-1] - mins[0], 100)
+
     def test_dia_normal_sin_anomalias(self):
         ult = self.anom["dias"][0]
         self.assertEqual(ult["dia"], "2026-11-24")
@@ -143,7 +159,7 @@ class Actualizar(unittest.TestCase):
         self.assertTrue(aviso)
 
     def test_ruta_que_falta_y_calles_nuevas(self):
-        cambios = {5: {"pasos": 0}, 7: {"columna": 1}}   # la 5 no salió; la 7 se fue a otra zona        # la ruta 7 se fue a otra zona
+        cambios = {5: {"pasos": 0}, 7: {"columna": 1}}   # la 5 no salió; la 7 se fue a otra zona
         _, anom, _ = self.armar(cambios)
         a = anom["dias"][0]["anomalias"]
         falta = [x for x in a if x["tipo"] == "rutas_sin_servicio"]

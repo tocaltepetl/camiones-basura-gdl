@@ -154,9 +154,14 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 .h-row b{white-space:nowrap}
 .h-now{color:var(--acc);font-weight:600}
 .h-tip{padding:6px 8px;border-radius:8px;background:var(--bg);margin:6px 0}
-.h-lg{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
-.h-lg span{display:inline-flex;align-items:center;gap:4px}
-.h-lg i{display:inline-block;width:10px;height:10px;border-radius:50%}
+#horRuta{font:inherit;width:100%;padding:6px 8px;margin:2px 0 6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.h-ruta{font-size:16px}
+.h-sub{font-weight:600;margin:10px 0 2px!important}
+.h-chips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}
+.h-chips button{font-size:13px;padding:4px 10px}
+.h-bar{height:8px;border-radius:4px;margin:8px 0 2px}
+.h-scale{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.h-label{font:600 11px/1 system-ui,sans-serif;padding:2px 5px;border-radius:6px;background:var(--card);color:var(--fg);box-shadow:0 0 0 1px var(--line),0 1px 3px #0004;pointer-events:none;white-space:nowrap}
 .lvl{font-size:12px;padding:0 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
 .lvl.l0{border-color:var(--acc);color:var(--acc)}.lvl.l2{border-color:var(--warn);color:var(--warn)}
 .maplibregl-popup-content{background:var(--card);color:var(--fg);font-size:14px}
@@ -210,8 +215,9 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 <!-- Horario aproximado (issue #24): se calcula cada noche con los recorridos publicados. -->
 <div id="horario" hidden aria-labelledby="horTitle" role="region">
   <div class="card-head"><strong id="horTitle">Horario aproximado</strong><button type="button" class="card-x" id="horClose" aria-label="Cerrar">✕</button></div>
+  <label for="horRuta" class="sr">Ruta</label><select id="horRuta"><option value="">Cargando rutas…</option></select>
   <div id="horBody">Cargando…</div>
-  <div class="h-lg" aria-label="Colores del mapa: hora a la que suele pasar"><span><i style="background:#facc15"></i>antes de 9</span><span><i style="background:#f97316"></i>9 a 11</span><span><i style="background:#db2777"></i>11 a 13</span><span><i style="background:#7c3aed"></i>después de 13</span></div>
+  <div id="horScale" aria-label="Colores del recorrido en el mapa: hora a la que suele pasar"></div>
   <p class="hint" id="horFoot"></p>
 </div></div>
 <div id="near"></div>
@@ -764,44 +770,124 @@ function nearestLive() {
   return best;
 }
 
-// ---------- horario aproximado (issue #24) ----------
+// ---------- horario aproximado por ruta (issue #24) ----------
 // horarios.json lo genera cada noche horarios/horarios.py (GitHub Actions) con los
 // recorridos publicados. Se baja completo: el punto que elijas no sale del navegador.
+// Se elige una ruta (de la lista o tocando tu calle) y se ve solo su recorrido típico,
+// coloreado por la hora a la que suele pasar, con la hora marcada cada media hora.
 const HORARIOS_URL = (DEBUG && PARAMS.get("horarios")) || "https://datos.basuragdl.tocaltepetl.org/horarios/horarios.json";   // ?debug&horarios=URL para probar
 const HOR_RADIO_M = 130;                  // cuadros a esta distancia cuentan como «tu calle»
 const HOR_RADIO_MAX_M = 300;              // si no hay nada, se busca hasta aquí
 const HOR_SRC = "horario";
-const HOR_COLORES = ["#facc15", "#f97316", "#db2777", "#7c3aed"];   // <9, 9–11, 11–13, ≥13 h
+const HOR_ETIQUETA_MIN = 30;              // una etiqueta de hora cada media hora
+const HOR_RAMPA = ["#fde047", "#fb923c", "#e11d48", "#9333ea", "#1d4ed8"];   // del inicio al fin de la ruta
 const NIVEL_TXT = ["estable", "varía", "varía mucho"];
 const horPanel = document.getElementById("horario"), horBody = document.getElementById("horBody");
-const btnHorario = document.getElementById("btnHorario");
-let hor = null, horIdx = null, horPoint = null, horMarker = null, horLoading = null;
-const hhmm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+const btnHorario = document.getElementById("btnHorario"), horRuta = document.getElementById("horRuta");
+let hor = null, horIdx = null, horPorRuta = null, horLoading = null;
+let horPoint = null, horMarker = null, horSel = null, horLabels = [];
+const hhmm = m => `${Math.floor(m / 60)}:${String(Math.round(m) % 60).padStart(2, "0")}`;
 const fechaCorta = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "long"});
+const porNumero = (a, b) => (parseInt(a) - parseInt(b)) || a.localeCompare(b);
+const pctl = (v, p) => v[Math.min(v.length - 1, Math.max(0, Math.round((v.length - 1) * p)))];
 function loadHorarios() {
   return horLoading ||= fetch(HORARIOS_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(j => {
-    hor = j; horIdx = new Map();
-    for (const p of j.puntos) { const k = p[0] + "," + p[1]; (horIdx.get(k) || horIdx.set(k, []).get(k)).push(p); }
+    hor = j; horIdx = new Map(); horPorRuta = new Map();
+    for (const p of j.puntos) {
+      const k = p[0] + "," + p[1]; (horIdx.get(k) || horIdx.set(k, []).get(k)).push(p);
+      (horPorRuta.get(p[2]) || horPorRuta.set(p[2], []).get(p[2])).push(p);
+    }
+    horRuta.innerHTML = `<option value="">Elige una ruta…</option>` +
+      [...horPorRuta.keys()].sort(porNumero).map(r => `<option value="${esc(r)}">Ruta ${esc(r)}</option>`).join("");
   }).catch(e => { horLoading = null; throw e; });
 }
-function horGeo() {
+const mid = p => (p[3] + p[4]) / 2;
+// Inicio y fin típicos de una ruta: sin el 5 % de cuadros más extremos.
+function rutaResumen(ruta) {
+  const pts = horPorRuta.get(ruta) || [], ini = pts.map(p => p[3]).sort((a, b) => a - b), fin = pts.map(p => p[4]).sort((a, b) => a - b);
+  const c = pts.filter(p => p[6] != null), ci = c.map(p => p[6]).sort((a, b) => a - b), cf = c.map(p => p[7]).sort((a, b) => a - b);
+  return {pts, ini: pctl(ini, .05), fin: pctl(fin, .95), cini: ci.length ? pctl(ci, .05) : null, cfin: cf.length ? pctl(cf, .95) : null,
+    nivel: hor.rutas[ruta]?.nivel ?? 1};
+}
+function horGeo(ruta) {
   const {celda_lat: cl, celda_lng: cg} = hor.parametros;
-  return {type: "FeatureCollection", features: hor.puntos.map(p => ({type: "Feature",
-    properties: {b: p[3] < 540 ? 0 : p[3] < 660 ? 1 : p[3] < 780 ? 2 : 3, v: p[5]},
-    geometry: {type: "Point", coordinates: [p[1] * cg, p[0] * cl]}}))};
+  return {type: "FeatureCollection", features: (horPorRuta.get(ruta) || []).map(p => ({type: "Feature",
+    properties: {m: mid(p), v: p[5]}, geometry: {type: "Point", coordinates: [p[1] * cg, p[0] * cl]}}))};
 }
-function addHorLayer() {   // también tras cambiar de estilo (claro/oscuro), que borra las capas
-  if (horPanel.hidden || !hor || map.getSource(HOR_SRC)) return;
-  if (!map.isStyleLoaded()) { map.once("idle", addHorLayer); return; }   // da falso mientras cargan teselas
-  map.addSource(HOR_SRC, {type: "geojson", data: horGeo()});
-  map.addLayer({id: HOR_SRC, type: "circle", source: HOR_SRC, minzoom: 12, paint: {
-    "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 12, 1.5, 16, 7, 18, 24],
-    "circle-color": ["match", ["get", "b"], 0, HOR_COLORES[0], 1, HOR_COLORES[1], 2, HOR_COLORES[2], HOR_COLORES[3]],
-    "circle-opacity": ["match", ["get", "v"], 2, 0.25, 0.6],
-  }}, map.getLayer("trails") ? "trails" : undefined);
+function clearHorMap() {
+  for (const id of [HOR_SRC, HOR_SRC + "-borde"]) if (map.getLayer(id)) map.removeLayer(id);
+  if (map.getSource(HOR_SRC)) map.removeSource(HOR_SRC);
+  horLabels.forEach(m => m.remove()); horLabels = [];
 }
-function removeHorLayer() { if (map.getLayer(HOR_SRC)) map.removeLayer(HOR_SRC); if (map.getSource(HOR_SRC)) map.removeSource(HOR_SRC); }
-map.on("style.load", addHorLayer);
+// Recorrido del día típico de la ruta (rutas/<ruta>.json, junto a horarios.json): se baja al elegirla.
+const horTrazas = new Map();
+function loadTraza(ruta) {
+  if (!horTrazas.has(ruta)) {
+    const url = new URL(`rutas/${encodeURIComponent(ruta)}.json`, new URL(HORARIOS_URL, location.href));
+    horTrazas.set(ruta, fetch(url).then(r => r.ok ? r.json() : null).catch(() => null));
+  }
+  return horTrazas.get(ruta);
+}
+async function drawHorMap() {   // también tras cambiar de estilo (claro/oscuro), que borra las capas
+  clearHorMap();
+  if (horPanel.hidden || !hor || !horSel) return;
+  const ruta = horSel, tr = await loadTraza(ruta);
+  if (ruta !== horSel || horPanel.hidden) return;   // cambiaron de ruta mientras bajaba
+  clearHorMap();
+  const r = rutaResumen(ruta), before = map.getLayer("trails") ? "trails" : undefined;
+  let feats, ini, fin, puntos;   // puntos: [lng, lat, minuto] para las etiquetas
+  if (tr && tr.tramos.length) {
+    // Un segmento por par de puntos, con su minuto, para colorear la línea por hora.
+    feats = []; puntos = [];
+    for (const t of tr.tramos) for (let k = 0; k < t.length; k++) {
+      puntos.push([t[k][1], t[k][0], t[k][2]]);
+      if (k) feats.push({type: "Feature", properties: {m: (t[k - 1][2] + t[k][2]) / 2},
+        geometry: {type: "LineString", coordinates: [[t[k - 1][1], t[k - 1][0]], [t[k][1], t[k][0]]]}});
+    }
+    ini = puntos[0][2]; fin = puntos[puntos.length - 1][2];
+  } else {   // sin recorrido: los cuadros del horario
+    const {celda_lat: cl, celda_lng: cg} = hor.parametros;
+    puntos = r.pts.filter(p => p[5] < 2).map(p => [p[1] * cg, p[0] * cl, mid(p)]);
+    feats = r.pts.map(p => ({type: "Feature", properties: {m: mid(p)}, geometry: {type: "Point", coordinates: [p[1] * cg, p[0] * cl]}}));
+    ini = r.ini; fin = r.fin;
+  }
+  const paso = (fin - ini) / (HOR_RAMPA.length - 1) || 1;
+  const color = ["interpolate", ["linear"], ["get", "m"], ...HOR_RAMPA.flatMap((c, i) => [ini + i * paso, c])];
+  // isStyleLoaded() da falso mientras cargan teselas; addSource solo necesita el estilo.
+  try { map.addSource(HOR_SRC, {type: "geojson", data: {type: "FeatureCollection", features: feats}}); }
+  catch { map.once("style.load", drawHorMap); return; }
+  if (tr && tr.tramos.length) {
+    const ancho = ["interpolate", ["linear"], ["zoom"], 11, 2, 14, 4, 17, 8];
+    map.addLayer({id: HOR_SRC + "-borde", type: "line", source: HOR_SRC, layout: {"line-cap": "round", "line-join": "round"},
+      paint: {"line-color": cssVar("--card"), "line-width": ["interpolate", ["linear"], ["zoom"], 11, 5, 14, 7, 17, 11], "line-opacity": 0.8}}, before);
+    map.addLayer({id: HOR_SRC, type: "line", source: HOR_SRC, layout: {"line-cap": "round", "line-join": "round"},
+      paint: {"line-color": color, "line-width": ancho}}, before);
+  } else {
+    map.addLayer({id: HOR_SRC, type: "circle", source: HOR_SRC, paint: {
+      "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 11, 2, 14, 4, 16, 8, 18, 22], "circle-color": color, "circle-opacity": 0.85}}, before);
+  }
+  // Hora cada media hora, en el punto que más se acerca a ella.
+  for (let t = Math.ceil(ini / HOR_ETIQUETA_MIN) * HOR_ETIQUETA_MIN; t <= fin; t += HOR_ETIQUETA_MIN) {
+    let best = null, bd = Infinity;
+    for (const p of puntos) { const d = Math.abs(p[2] - t); if (d < bd) { bd = d; best = p; } }
+    if (!best || bd > 10) continue;
+    const el = document.createElement("div"); el.className = "h-label"; el.textContent = hhmm(t);
+    horLabels.push(new maplibregl.Marker({element: el, anchor: "bottom", offset: [0, -6]}).setLngLat([best[0], best[1]]).addTo(map));
+  }
+  const dia = tr ? new Date(tr.dia + "T12:00:00").toLocaleDateString("es-MX", {weekday: "long", day: "numeric", month: "long"}) : null;
+  document.getElementById("horScale").innerHTML = `<div class="h-bar" style="background:linear-gradient(90deg,${HOR_RAMPA.join(",")})"></div>` +
+    `<div class="h-scale"><span>${hhmm(ini)}</span><span>${hhmm(fin)}</span></div>` +
+    `<p class="hint">${dia ? `En el mapa: el recorrido real del ${esc(dia)}, el día que más se pareció a lo típico. Solo los tramos recolectando; sin los viajes a descargar.` : "En el mapa: dónde y a qué hora suele recoger."}</p>`;
+}
+map.on("style.load", drawHorMap);
+function fitRuta(ruta) {
+  const {celda_lat: cl, celda_lng: cg} = hor.parametros, pts = horPorRuta.get(ruta) || [];
+  if (!pts.length) return;
+  const b = new maplibregl.LngLatBounds();
+  pts.forEach(p => b.extend([p[1] * cg, p[0] * cl]));
+  if (horPoint) b.extend(horPoint);
+  map.fitBounds(b, {padding: {top: 40, bottom: 40, left: 40, right: innerWidth > NARROW_PX ? 360 : 40}, maxZoom: FOCUS_ZOOM});
+}
 // Rutas que recogen cerca del punto: por cada ruta, el cuadro más cercano.
 function horNear(pos, radio) {
   const {celda_lat: cl, celda_lng: cg} = hor.parametros;
@@ -813,7 +899,7 @@ function horNear(pos, radio) {
       if (d <= radio && (!best.has(p[2]) || d < best.get(p[2]).d)) best.set(p[2], {p, d});
     }
   }
-  return [...best.values()].sort((a, b) => a.p[3] - b.p[3]);
+  return [...best.values()].sort((a, b) => a.d - b.d);
 }
 function horFoot() {
   const d = hor.dias;
@@ -823,37 +909,61 @@ function horFoot() {
     `Tu punto no sale de tu navegador. <a href="https://github.com/tocaltepetl/camiones-basura-gdl#horario-aproximado" target="_blank" rel="noopener">Cómo se calcula</a> · ` +
     `<a href="${HORARIOS_URL}" target="_blank" rel="noopener">datos (JSON)</a> · <a href="#" data-exige>exige el horario oficial</a>`;
 }
+const lunes = () => new Date().getDay() === 1;
+const fila = (t, a, b, now) => `<div class="h-row${now ? " h-now" : ""}"><span>${t}</span><b>${a == null ? "sin datos" : `${hhmm(a)} a ${hhmm(b)}`}</b></div>`;
+const pocos = () => hor.dias.cargado.length < 4 ? ' <span class="hint">(pocos días)</span>' : "";
 function renderHorario() {
   if (!hor) return;
   horFoot();
-  const ask = `<p>Toca el mapa en tu calle o usa tu ubicación.</p><button type="button" class="sec" id="horMe">📍 Usar mi ubicación</button>`;
-  if (!horPoint) { horBody.innerHTML = ask; document.getElementById("horMe").onclick = horUseMe; return; }
-  let list = horNear(horPoint, HOR_RADIO_M), lejos = false;
-  if (!list.length) { list = horNear(horPoint, HOR_RADIO_MAX_M); lejos = true; }
-  if (!list.length) {
-    horBody.innerHTML = `<p>No tenemos horario para este punto: o ningún camión recoge aquí, o todavía no lo hemos visto suficientes días.</p><button type="button" class="sec" id="horMe">📍 Usar mi ubicación</button>`;
-    document.getElementById("horMe").onclick = horUseMe; return;
+  horRuta.value = horSel || "";
+  const cerca = horPoint ? horNear(horPoint, HOR_RADIO_M) : [];
+  const lejos = horPoint && !cerca.length ? horNear(horPoint, HOR_RADIO_MAX_M) : [];
+  const opciones = cerca.length ? cerca : lejos;
+  let h = "";
+  if (horPoint && opciones.length > 1) {   // varias rutas pasan por ahí: se elige cuál ver
+    h += `<p class="hint">${cerca.length ? "Por tu calle pasan" : "Cerca de tu punto pasan"} ${opciones.length} rutas:</p><div class="h-chips">` +
+      opciones.map(({p}) => `<button type="button" class="sec${p[2] === horSel ? " active" : ""}" data-ruta="${esc(p[2])}">Ruta ${esc(p[2])} · ${hhmm(p[3])}</button>`).join("") + `</div>`;
+  } else if (horPoint && !opciones.length) {
+    h += `<p>No tenemos horario para este punto: o ningún camión recoge aquí, o todavía no lo hemos visto suficientes días. Elige una ruta de la lista.</p>`;
   }
-  const lunes = new Date().getDay() === 1;
-  const fila = (t, a, b, now) => `<div class="h-row${now ? " h-now" : ""}"><span>${t}</span><b>${a == null ? "sin datos" : `${hhmm(a)} a ${hhmm(b)}`}</b></div>`;
-  const items = list.map(({p, d}) => {
-    const [, , ruta, a, b, nv, ca, cb] = p;
-    return `<li><div class="h-row"><span><b>Ruta ${esc(ruta)}</b> <span class="hint">· ${d < 40 ? "aquí" : "a " + fmtDist(d)}</span></span><span class="lvl l${nv}">${NIVEL_TXT[nv]}</span></div>` +
-      fila("Martes a sábado", a, b, !lunes) + fila(`Lunes y después de feriado${hor.dias.cargado.length < 4 ? ' <span class="hint">(pocos días)</span>' : ""}`, ca, cb, lunes) + `</li>`;
-  }).join("");
-  const p0 = list[0].p, antes = lunes && p0[6] != null ? Math.min(p0[3], p0[6]) : p0[3];
-  horBody.innerHTML = (lejos ? `<p class="hint">Nada en tu calle; esto es lo más cercano.</p>` : "") +
-    `<p class="h-tip">Saca la basura antes de las <b>${hhmm(antes)}</b>.</p>` +
-    `<p class="hint">Suele pasar entre estas horas (sin contar los días más tempranos ni los más tardíos):</p><ul>${items}</ul>` +
-    (list.some(x => x.p[5] === 2) ? `<p class="hint">«Varía mucho»: el orden del recorrido cambia de un día a otro; toma la hora como referencia.</p>` : "");
+  if (!horSel) {
+    horBody.innerHTML = h || `<p>Elige una ruta o toca tu calle en el mapa.</p><button type="button" class="sec" id="horMe">📍 Usar mi ubicación</button>`;
+    document.getElementById("horScale").innerHTML = "";
+    wireHor(); return;
+  }
+  const r = rutaResumen(horSel), aqui = opciones.find(x => x.p[2] === horSel);
+  h += `<div class="h-row"><b class="h-ruta">Ruta ${esc(horSel)}</b><span class="lvl l${r.nivel}">${NIVEL_TXT[r.nivel]}</span></div>`;
+  if (aqui) {
+    const [, , , a, b, nv, ca, cb] = aqui.p, antes = lunes() && ca != null ? ca : a;
+    h += `<p class="h-tip">${aqui.d < 40 ? "En tu calle" : `A ${fmtDist(aqui.d)} de tu punto`} suele pasar entre <b>${hhmm(a)} y ${hhmm(b)}</b>` +
+      `${nv !== r.nivel ? ` <span class="lvl l${nv}">${NIVEL_TXT[nv]}</span>` : ""}.<br>Saca la basura antes de las <b>${hhmm(antes)}</b>.</p>` +
+      fila("Martes a sábado", a, b, !lunes()) + fila(`Lunes y después de feriado${pocos()}`, ca, cb, lunes());
+  } else {
+    h += `<p class="hint">Toca tu calle en el mapa para ver a qué hora pasa por ahí.</p>`;
+  }
+  h += `<p class="h-sub">Recorrido completo</p>` + fila("Martes a sábado", r.ini, r.fin, false) + fila(`Lunes y después de feriado${pocos()}`, r.cini, r.cfin, false);
+  if (r.nivel === 2) h += `<p class="hint">«Varía mucho»: el orden del recorrido cambia de un día a otro; toma las horas como referencia.</p>`;
+  horBody.innerHTML = h;
+  wireHor();
+}
+function wireHor() {
+  horBody.querySelectorAll("[data-ruta]").forEach(b => b.onclick = () => selectRuta(b.dataset.ruta, true));
+  const btn = document.getElementById("horMe"); if (btn) btn.onclick = horUseMe;
+}
+function selectRuta(ruta, fit) {
+  horSel = ruta || null;
+  renderHorario(); drawHorMap();
+  if (horSel && fit) fitRuta(horSel);
 }
 function setHorPoint(pos) {
   horPoint = pos;
   if (!horMarker) {
-    horMarker = new maplibregl.Marker({color: "#7c3aed", draggable: true}).setLngLat(pos).addTo(map);
+    horMarker = new maplibregl.Marker({color: "#1d4ed8", draggable: true}).setLngLat(pos).addTo(map);
     horMarker.on("dragend", () => { const l = horMarker.getLngLat(); setHorPoint([l.lng, l.lat]); });
   } else horMarker.setLngLat(pos);
-  renderHorario();
+  // La ruta elegida se queda si pasa por ahí; si no, se toma la más cercana.
+  const op = horNear(pos, HOR_RADIO_M).length ? horNear(pos, HOR_RADIO_M) : horNear(pos, HOR_RADIO_MAX_M);
+  if (op.length && !op.some(x => x.p[2] === horSel)) selectRuta(op[0].p[2], false); else renderHorario();
 }
 function horUseMe() {
   if (!("geolocation" in navigator)) { horBody.textContent = "Tu navegador no permite geolocalización. Toca el mapa en tu calle."; return; }
@@ -861,23 +971,25 @@ function horUseMe() {
   navigator.geolocation.getCurrentPosition(p => {
     const pos = [p.coords.longitude, p.coords.latitude];
     setHorPoint(pos); map.flyTo({center: pos, zoom: FOCUS_ZOOM});
-  }, () => { horPoint = null; renderHorario(); horBody.insertAdjacentHTML("afterbegin", `<p class="hint">No pudimos usar tu ubicación.</p>`); },
+  }, () => { renderHorario(); horBody.insertAdjacentHTML("afterbegin", `<p class="hint">No pudimos usar tu ubicación.</p>`); },
   {enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: GEO_MAX_AGE_MS});
 }
-async function setHorario(on) {
+async function setHorario(on, ruta) {
   horPanel.hidden = !on; btnHorario.classList.toggle("active", on); btnHorario.setAttribute("aria-pressed", on);
-  if (!on) { removeHorLayer(); if (horMarker) { horMarker.remove(); horMarker = null; } horPoint = null; return; }
+  if (!on) { clearHorMap(); if (horMarker) { horMarker.remove(); horMarker = null; } horPoint = horSel = null; return; }
   if (!heat.hidden) setHeat(false);   // ocupan el mismo lugar
   horBody.textContent = "Cargando…";
   try { await loadHorarios(); } catch { horBody.textContent = "No se pudo cargar el horario. Intenta más tarde."; return; }
   if (horPanel.hidden) return;
-  addHorLayer();
   const dbgPt = DEBUG && PARAMS.get("pt")?.split(",").map(Number);   // ?debug&pt=lat,lng para probar
-  if (dbgPt) { setHorPoint([dbgPt[1], dbgPt[0]]); map.jumpTo({center: [dbgPt[1], dbgPt[0]], zoom: FOCUS_ZOOM}); }
-  else if (me && !horPoint) setHorPoint(me); else renderHorario();
+  if (ruta && horPorRuta.has(ruta)) selectRuta(ruta, true);
+  else if (dbgPt) { setHorPoint([dbgPt[1], dbgPt[0]]); map.jumpTo({center: [dbgPt[1], dbgPt[0]], zoom: FOCUS_ZOOM}); }
+  else if (me && !horPoint) setHorPoint(me);
+  else renderHorario();
 }
 btnHorario.onclick = () => setHorario(horPanel.hidden);
 document.getElementById("horClose").onclick = () => setHorario(false);
+horRuta.onchange = () => selectRuta(horRuta.value, true);
 map.on("click", e => { if (!picking && !horPanel.hidden && hor) setHorPoint([e.lngLat.lng, e.lngLat.lat]); });
 
 // ---------- áreas de ruta (para suscribirse solo a lo visible) ----------
@@ -1000,7 +1112,7 @@ function openExige() { welcome.hidden = true; document.getElementById("aboutCard
 document.getElementById("btnExige").onclick = openExige;
 document.addEventListener("click", e => { if (e.target.closest("[data-exige]")) { e.preventDefault(); openExige(); } });
 if (PARAMS.has("exige")) openExige();
-if (PARAMS.has("horario")) { welcome.hidden = true; setHorario(true); }   // enlace directo: basuragdl.tocaltepetl.org/?horario
+if (PARAMS.has("horario")) { welcome.hidden = true; setHorario(true, PARAMS.get("horario")); }   // enlace directo: /?horario o /?horario=50 (una ruta)
 const legend = document.getElementById("legend");
 map.addControl({onAdd: () => legend, onRemove: () => legend.remove()}, "bottom-right");
 // Aviso de mapa vacío: solo si llevamos un rato en vivo sin ningún camión en la vista.
