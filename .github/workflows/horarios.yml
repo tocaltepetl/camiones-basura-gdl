@@ -1,0 +1,94 @@
+# Horario aproximado y detector de anomalías (horarios/), con los recorridos
+# que publica el grabador.
+# - En PR: pruebas.
+# - Cada noche (01:30 en Guadalajara, después de que el grabador publica el día),
+#   en push a main que toque horarios/ o a mano: resume los días nuevos, recalcula
+#   todo y lo publica en R2 (datos.basuragdl.tocaltepetl.org/horarios/). Si hay
+#   anomalías de nivel alto, avisa por ntfy (solo en la corrida nocturna).
+# Corre en el ambiente «datos», sin aprobación: su llave de R2 solo puede leer y
+# escribir objetos del bucket camiones-basura-datos.
+# Ver docs/decisiones.md («Horario aproximado y detector de anomalías»).
+name: Horarios
+on:
+  pull_request:
+    paths: ["horarios/**", ".github/workflows/horarios.yml"]
+  push:
+    branches: [main]
+    paths: ["horarios/**", ".github/workflows/horarios.yml"]
+  schedule:
+    - cron: "30 7 * * *"
+  workflow_dispatch:
+permissions: {}
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Pruebas
+        run: python3 -m unittest discover -s horarios
+
+  publicar:
+    needs: probar
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: datos
+      url: https://basuragdl.tocaltepetl.org/?horario
+    permissions:
+      contents: read
+    concurrency:
+      group: horarios
+      cancel-in-progress: false
+    steps:
+      - name: Carpetas de trabajo
+        run: |
+          echo "RES=$RUNNER_TEMP/resumenes" >> "$GITHUB_ENV"
+          echo "SAL=$RUNNER_TEMP/salida" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Resumen de cada día
+        run: |
+          mkdir -p "$RES"
+          # Días anteriores al grabador de Cloudflare (o que este no grabó completos).
+          cp horarios/semilla/*.json.gz "$RES/"
+          python3 -I horarios/horarios.py sincronizar --resumenes "$RES" --tmp "$RUNNER_TEMP"
+      - name: Horario y anomalías
+        run: |
+          python3 -I horarios/horarios.py actualizar --resumenes "$RES" --salida "$SAL"
+          cat "$SAL/resumen.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Publicar en R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          # R2 no acepta las sumas de verificación nuevas que la CLI manda por omisión.
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+          R2: https://${{ vars.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          DESTINO: s3://camiones-basura-datos/horarios
+        run: |
+          # Resúmenes diarios: solo los que faltan (no cambian).
+          aws s3 sync "$RES" "$DESTINO/dias" --endpoint-url "$R2" --size-only --no-progress \
+            --exclude '*' --include '*.json.gz' \
+            --content-type application/gzip --cache-control 'public, max-age=86400'
+          for f in horarios.json anomalias.json; do
+            aws s3 cp "$SAL/$f" "$DESTINO/$f" --endpoint-url "$R2" --no-progress \
+              --content-type 'application/json; charset=utf-8' --cache-control 'public, max-age=3600'
+          done
+      - name: Avisar por ntfy
+        if: github.event_name == 'schedule'
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          if [ -f "$SAL/aviso.txt" ] && [ -n "$NTFY_TOPIC" ]; then
+            curl -fsS -H "Title: Camiones GDL: algo raro en la recolección" -H "Tags: warning" \
+              -H "Click: https://datos.basuragdl.tocaltepetl.org/horarios/anomalias.json" \
+              --data-binary "@$SAL/aviso.txt" "https://ntfy.sh/$NTFY_TOPIC" > /dev/null
+          elif [ -f "$SAL/aviso.txt" ]; then
+            echo "::warning::Hay anomalías de nivel alto, pero falta el secreto NTFY_TOPIC en el ambiente «datos»."
+          fi

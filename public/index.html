@@ -142,6 +142,23 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
 #heat .scale{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
 #heat ul{margin:4px 0;padding-left:18px}
 #mapWrap{position:relative;flex:1;min-height:0;display:flex}
+/* Horario aproximado */
+#horario{position:absolute;top:8px;right:8px;z-index:2;width:min(330px,calc(100vw - 32px));max-height:calc(100% - 16px);overflow:auto;padding:10px 12px;border-radius:12px;background:var(--card);box-shadow:0 2px 12px #0005,0 0 0 1px var(--line);font-size:14px}
+#horario[hidden]{display:none}
+@media (max-width:520px){#horario{max-height:55%}}
+#horario p{margin:6px 0}
+#horario ul{list-style:none;margin:6px 0;padding:0}
+#horario li{padding:8px 0;border-top:1px solid var(--line)}
+#horario li:first-child{border-top:0}
+.h-row{display:flex;justify-content:space-between;gap:8px}
+.h-row b{white-space:nowrap}
+.h-now{color:var(--acc);font-weight:600}
+.h-tip{padding:6px 8px;border-radius:8px;background:var(--bg);margin:6px 0}
+.h-lg{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.h-lg span{display:inline-flex;align-items:center;gap:4px}
+.h-lg i{display:inline-block;width:10px;height:10px;border-radius:50%}
+.lvl{font-size:12px;padding:0 6px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.lvl.l0{border-color:var(--acc);color:var(--acc)}.lvl.l2{border-color:var(--warn);color:var(--warn)}
 .maplibregl-popup-content{background:var(--card);color:var(--fg);font-size:14px}
 .maplibregl-popup-tip{border-top-color:var(--card)!important;border-bottom-color:var(--card)!important}
 .maplibregl-popup-close-button{color:var(--fg)}
@@ -160,6 +177,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   <div class="more"><button id="btnMore" class="sec" aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu">Más ▾</button>
     <div id="moreMenu" class="more-menu" hidden>
       <button id="btnPick" type="button">🗺️ Ver camiones cerca de otro lugar</button>
+      <button id="btnHorario" type="button" aria-pressed="false">🕒 Horario aproximado</button>
       <button id="btnHeat" type="button" aria-pressed="false">🔥 Mapa de reportes</button>
       <button id="btnHelp" type="button">❔ ¿Cómo funciona?</button>
       <button id="btnExige" type="button">📣 Exige el mapa oficial y datos abiertos</button>
@@ -188,6 +206,13 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
   <div id="hSum">Cargando…</div>
   <p><a id="hData" href="/api/reportes?dias=7&k=0" target="_blank" rel="noopener">Totales (JSON) ↗</a> · <a href="/api/reportes.csv" target="_blank" rel="noopener">Cada reporte (CSV) ↗</a> · <a href="https://github.com/tocaltepetl/camiones-basura-gdl#datos-abiertos" target="_blank" rel="noopener">qué contienen</a></p>
   <p class="hint">Cuenta quién tocó «Abrir GuaZap» desde aquí, no el total de reportes al Ayuntamiento. Zonas de ~500 m; las que tienen menos de <span id="hMin">5</span> reportes no se muestran.</p>
+</div>
+<!-- Horario aproximado (issue #24): se calcula cada noche con los recorridos publicados. -->
+<div id="horario" hidden aria-labelledby="horTitle" role="region">
+  <div class="card-head"><strong id="horTitle">Horario aproximado</strong><button type="button" class="card-x" id="horClose" aria-label="Cerrar">✕</button></div>
+  <div id="horBody">Cargando…</div>
+  <div class="h-lg" aria-label="Colores del mapa: hora a la que suele pasar"><span><i style="background:#facc15"></i>antes de 9</span><span><i style="background:#f97316"></i>9 a 11</span><span><i style="background:#db2777"></i>11 a 13</span><span><i style="background:#7c3aed"></i>después de 13</span></div>
+  <p class="hint" id="horFoot"></p>
 </div></div>
 <div id="near"></div>
 <!-- Ficha para reportar fallas de recolección por GuaZap (WhatsApp del Ayuntamiento). -->
@@ -279,7 +304,7 @@ button.sec.active{border-color:var(--acc);box-shadow:inset 0 0 0 1px var(--acc)}
     <p>Mapa en vivo, <strong>no oficial</strong>, de los camiones de basura de Guadalajara. Los datos vienen de una fuente pública que puede fallar o cambiar sin aviso.</p>
     <p>Tu ubicación y el punto que elijas solo se usan en tu navegador; no se envían a ningún lado. Si reportas con la guía, contamos de forma anónima el tipo de falla y una zona de ~500 m (puedes desactivarlo en la ficha). Para saber cuánta gente usa el mapa, contamos visitas con Cloudflare Web Analytics, sin cookies ni datos personales. <a href="https://github.com/tocaltepetl/.github/blob/main/docs/privacidad.md" target="_blank" rel="noopener">Cómo cuidamos tu privacidad</a>.</p>
     <p>Este mapa existe porque el oficial, <a href="https://tequierolimpia.guadalajara.gob.mx" target="_blank" rel="noopener">tequierolimpia.guadalajara.gob.mx</a>, no funciona. <a href="#" data-exige>Exige que lo arreglen y publiquen los datos</a>.</p>
-    <p>Mientras tanto, publicamos como <strong>datos abiertos</strong> los recorridos de cada día, para analizar rutas y horarios: <a href="https://datos.basuragdl.tocaltepetl.org/index.html" target="_blank" rel="noopener">datos.basuragdl.tocaltepetl.org</a>.</p>
+    <p>Mientras tanto, publicamos como <strong>datos abiertos</strong> los recorridos de cada día, para analizar rutas y horarios: <a href="https://datos.basuragdl.tocaltepetl.org/index.html" target="_blank" rel="noopener">datos.basuragdl.tocaltepetl.org</a>. Con ellos calculamos cada noche un <a href="?horario">horario aproximado</a> de cada calle.</p>
     <p>¿No pasó el camión o hubo un problema? Usa <strong>«Repórtalo»</strong> (arriba) para enviarlo por GuaZap, el WhatsApp de reportes del Ayuntamiento.</p>
     <p>Puedes agregar este mapa a la pantalla de inicio de tu celular desde el menú del navegador («Agregar a la pantalla principal» o «Instalar app»).</p>
     <label class="opt"><input type="checkbox" id="autoPause" checked> Pausar tras <span id="idleMin">10</span> min sin uso <span class="hint">(ahorra datos de tu celular)</span></label>
@@ -724,6 +749,7 @@ function changesHtml(list) {
   return `<p><b>Dónde el bot no coincidió con la guía</b></p><ul>${rows}</ul>`;
 }
 function setHeat(on) {
+  if (on && !horPanel.hidden) setHorario(false);   // ocupan el mismo lugar
   heat.hidden = !on; btnHeat.classList.toggle("active", on); btnHeat.setAttribute("aria-pressed", on);
   if (on) loadHeat(); else removeHeatLayer();
 }
@@ -737,6 +763,122 @@ function nearestLive() {
   for (const t of trucks.values()) if (!t.old) { const d = dist(me, t.pos); if (d < bd) { bd = d; best = t; } }
   return best;
 }
+
+// ---------- horario aproximado (issue #24) ----------
+// horarios.json lo genera cada noche horarios/horarios.py (GitHub Actions) con los
+// recorridos publicados. Se baja completo: el punto que elijas no sale del navegador.
+const HORARIOS_URL = (DEBUG && PARAMS.get("horarios")) || "https://datos.basuragdl.tocaltepetl.org/horarios/horarios.json";   // ?debug&horarios=URL para probar
+const HOR_RADIO_M = 130;                  // cuadros a esta distancia cuentan como «tu calle»
+const HOR_RADIO_MAX_M = 300;              // si no hay nada, se busca hasta aquí
+const HOR_SRC = "horario";
+const HOR_COLORES = ["#facc15", "#f97316", "#db2777", "#7c3aed"];   // <9, 9–11, 11–13, ≥13 h
+const NIVEL_TXT = ["estable", "varía", "varía mucho"];
+const horPanel = document.getElementById("horario"), horBody = document.getElementById("horBody");
+const btnHorario = document.getElementById("btnHorario");
+let hor = null, horIdx = null, horPoint = null, horMarker = null, horLoading = null;
+const hhmm = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
+const fechaCorta = d => new Date(d + "T12:00:00").toLocaleDateString("es-MX", {day: "numeric", month: "long"});
+function loadHorarios() {
+  return horLoading ||= fetch(HORARIOS_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(j => {
+    hor = j; horIdx = new Map();
+    for (const p of j.puntos) { const k = p[0] + "," + p[1]; (horIdx.get(k) || horIdx.set(k, []).get(k)).push(p); }
+  }).catch(e => { horLoading = null; throw e; });
+}
+function horGeo() {
+  const {celda_lat: cl, celda_lng: cg} = hor.parametros;
+  return {type: "FeatureCollection", features: hor.puntos.map(p => ({type: "Feature",
+    properties: {b: p[3] < 540 ? 0 : p[3] < 660 ? 1 : p[3] < 780 ? 2 : 3, v: p[5]},
+    geometry: {type: "Point", coordinates: [p[1] * cg, p[0] * cl]}}))};
+}
+function addHorLayer() {   // también tras cambiar de estilo (claro/oscuro), que borra las capas
+  if (horPanel.hidden || !hor || map.getSource(HOR_SRC)) return;
+  if (!map.isStyleLoaded()) { map.once("idle", addHorLayer); return; }   // da falso mientras cargan teselas
+  map.addSource(HOR_SRC, {type: "geojson", data: horGeo()});
+  map.addLayer({id: HOR_SRC, type: "circle", source: HOR_SRC, minzoom: 12, paint: {
+    "circle-radius": ["interpolate", ["exponential", 2], ["zoom"], 12, 1.5, 16, 7, 18, 24],
+    "circle-color": ["match", ["get", "b"], 0, HOR_COLORES[0], 1, HOR_COLORES[1], 2, HOR_COLORES[2], HOR_COLORES[3]],
+    "circle-opacity": ["match", ["get", "v"], 2, 0.25, 0.6],
+  }}, map.getLayer("trails") ? "trails" : undefined);
+}
+function removeHorLayer() { if (map.getLayer(HOR_SRC)) map.removeLayer(HOR_SRC); if (map.getSource(HOR_SRC)) map.removeSource(HOR_SRC); }
+map.on("style.load", addHorLayer);
+// Rutas que recogen cerca del punto: por cada ruta, el cuadro más cercano.
+function horNear(pos, radio) {
+  const {celda_lat: cl, celda_lng: cg} = hor.parametros;
+  const i0 = Math.round(pos[1] / cl), j0 = Math.round(pos[0] / cg), n = Math.ceil(radio / 80) + 1;
+  const best = new Map();
+  for (let i = i0 - n; i <= i0 + n; i++) for (let j = j0 - n; j <= j0 + n; j++) {
+    for (const p of horIdx.get(i + "," + j) || []) {
+      const d = dist(pos, [j * cg, i * cl]);
+      if (d <= radio && (!best.has(p[2]) || d < best.get(p[2]).d)) best.set(p[2], {p, d});
+    }
+  }
+  return [...best.values()].sort((a, b) => a.p[3] - b.p[3]);
+}
+function horFoot() {
+  const d = hor.dias;
+  document.getElementById("horFoot").innerHTML =
+    `Calculado con ${d.normal.length} días normales y ${d.cargado.length} lunes o días después de feriado, hasta el ${esc(fechaCorta(hor.hasta))}. ` +
+    `<b>No es oficial</b>: es lo que hemos visto en los recorridos y puede cambiar. Los domingos no hay servicio. ` +
+    `Tu punto no sale de tu navegador. <a href="https://github.com/tocaltepetl/camiones-basura-gdl#horario-aproximado" target="_blank" rel="noopener">Cómo se calcula</a> · ` +
+    `<a href="${HORARIOS_URL}" target="_blank" rel="noopener">datos (JSON)</a> · <a href="#" data-exige>exige el horario oficial</a>`;
+}
+function renderHorario() {
+  if (!hor) return;
+  horFoot();
+  const ask = `<p>Toca el mapa en tu calle o usa tu ubicación.</p><button type="button" class="sec" id="horMe">📍 Usar mi ubicación</button>`;
+  if (!horPoint) { horBody.innerHTML = ask; document.getElementById("horMe").onclick = horUseMe; return; }
+  let list = horNear(horPoint, HOR_RADIO_M), lejos = false;
+  if (!list.length) { list = horNear(horPoint, HOR_RADIO_MAX_M); lejos = true; }
+  if (!list.length) {
+    horBody.innerHTML = `<p>No tenemos horario para este punto: o ningún camión recoge aquí, o todavía no lo hemos visto suficientes días.</p><button type="button" class="sec" id="horMe">📍 Usar mi ubicación</button>`;
+    document.getElementById("horMe").onclick = horUseMe; return;
+  }
+  const lunes = new Date().getDay() === 1;
+  const fila = (t, a, b, now) => `<div class="h-row${now ? " h-now" : ""}"><span>${t}</span><b>${a == null ? "sin datos" : `${hhmm(a)} a ${hhmm(b)}`}</b></div>`;
+  const items = list.map(({p, d}) => {
+    const [, , ruta, a, b, nv, ca, cb] = p;
+    return `<li><div class="h-row"><span><b>Ruta ${esc(ruta)}</b> <span class="hint">· ${d < 40 ? "aquí" : "a " + fmtDist(d)}</span></span><span class="lvl l${nv}">${NIVEL_TXT[nv]}</span></div>` +
+      fila("Martes a sábado", a, b, !lunes) + fila(`Lunes y después de feriado${hor.dias.cargado.length < 4 ? ' <span class="hint">(pocos días)</span>' : ""}`, ca, cb, lunes) + `</li>`;
+  }).join("");
+  const p0 = list[0].p, antes = lunes && p0[6] != null ? Math.min(p0[3], p0[6]) : p0[3];
+  horBody.innerHTML = (lejos ? `<p class="hint">Nada en tu calle; esto es lo más cercano.</p>` : "") +
+    `<p class="h-tip">Saca la basura antes de las <b>${hhmm(antes)}</b>.</p>` +
+    `<p class="hint">Suele pasar entre estas horas (sin contar los días más tempranos ni los más tardíos):</p><ul>${items}</ul>` +
+    (list.some(x => x.p[5] === 2) ? `<p class="hint">«Varía mucho»: el orden del recorrido cambia de un día a otro; toma la hora como referencia.</p>` : "");
+}
+function setHorPoint(pos) {
+  horPoint = pos;
+  if (!horMarker) {
+    horMarker = new maplibregl.Marker({color: "#7c3aed", draggable: true}).setLngLat(pos).addTo(map);
+    horMarker.on("dragend", () => { const l = horMarker.getLngLat(); setHorPoint([l.lng, l.lat]); });
+  } else horMarker.setLngLat(pos);
+  renderHorario();
+}
+function horUseMe() {
+  if (!("geolocation" in navigator)) { horBody.textContent = "Tu navegador no permite geolocalización. Toca el mapa en tu calle."; return; }
+  horBody.textContent = "Buscando tu ubicación…";
+  navigator.geolocation.getCurrentPosition(p => {
+    const pos = [p.coords.longitude, p.coords.latitude];
+    setHorPoint(pos); map.flyTo({center: pos, zoom: FOCUS_ZOOM});
+  }, () => { horPoint = null; renderHorario(); horBody.insertAdjacentHTML("afterbegin", `<p class="hint">No pudimos usar tu ubicación.</p>`); },
+  {enableHighAccuracy: true, timeout: GEO_TIMEOUT_MS, maximumAge: GEO_MAX_AGE_MS});
+}
+async function setHorario(on) {
+  horPanel.hidden = !on; btnHorario.classList.toggle("active", on); btnHorario.setAttribute("aria-pressed", on);
+  if (!on) { removeHorLayer(); if (horMarker) { horMarker.remove(); horMarker = null; } horPoint = null; return; }
+  if (!heat.hidden) setHeat(false);   // ocupan el mismo lugar
+  horBody.textContent = "Cargando…";
+  try { await loadHorarios(); } catch { horBody.textContent = "No se pudo cargar el horario. Intenta más tarde."; return; }
+  if (horPanel.hidden) return;
+  addHorLayer();
+  const dbgPt = DEBUG && PARAMS.get("pt")?.split(",").map(Number);   // ?debug&pt=lat,lng para probar
+  if (dbgPt) { setHorPoint([dbgPt[1], dbgPt[0]]); map.jumpTo({center: [dbgPt[1], dbgPt[0]], zoom: FOCUS_ZOOM}); }
+  else if (me && !horPoint) setHorPoint(me); else renderHorario();
+}
+btnHorario.onclick = () => setHorario(horPanel.hidden);
+document.getElementById("horClose").onclick = () => setHorario(false);
+map.on("click", e => { if (!picking && !horPanel.hidden && hor) setHorPoint([e.lngLat.lng, e.lngLat.lat]); });
 
 // ---------- áreas de ruta (para suscribirse solo a lo visible) ----------
 // Cada canal es una ruta que recorre siempre la misma zona. Guardamos el
@@ -858,6 +1000,7 @@ function openExige() { welcome.hidden = true; document.getElementById("aboutCard
 document.getElementById("btnExige").onclick = openExige;
 document.addEventListener("click", e => { if (e.target.closest("[data-exige]")) { e.preventDefault(); openExige(); } });
 if (PARAMS.has("exige")) openExige();
+if (PARAMS.has("horario")) { welcome.hidden = true; setHorario(true); }   // enlace directo: basuragdl.tocaltepetl.org/?horario
 const legend = document.getElementById("legend");
 map.addControl({onAdd: () => legend, onRemove: () => legend.remove()}, "bottom-right");
 // Aviso de mapa vacío: solo si llevamos un rato en vivo sin ningún camión en la vista.

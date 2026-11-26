@@ -31,6 +31,11 @@ está documentada y puede fallar o cambiar sin aviso.
 - **Reportes**: mapa de calor y totales de los reportes hechos con la guía.
   Solo se cuenta, de forma anónima y desactivable, el tipo de falla, el
   municipio y una zona de ~500 m; zonas con menos de 5 reportes no se muestran.
+- **Horario aproximado** (menú «Más», o el enlace `/?horario`): tocas tu calle
+  y dice entre qué horas suele pasar cada ruta, en días normales y en lunes o
+  días después de feriado, con qué tan estable es. Se calcula cada noche con
+  los recorridos publicados (ver [Horario aproximado](#horario-aproximado)).
+  El archivo se baja completo: el punto no sale del navegador.
 - **Exige el mapa oficial y datos abiertos** (menú «Más», o el enlace
   `/?exige`): el mapa oficial, tequierolimpia.guadalajara.gob.mx, no funciona.
   La ficha invita a pedir al Ayuntamiento que lo arregle y que publique la
@@ -139,6 +144,46 @@ Issues y PRs bienvenidos. Lee [CONTRIBUTING.md](CONTRIBUTING.md) y el
 El código: [MIT](LICENSE). Los datos que muestra la página no son de este
 proyecto: los publica el Ayuntamiento de Guadalajara por su app.
 
+### Horario aproximado
+Cada noche, `horarios/horarios.py` (workflow «Horarios») resume los recorridos
+del día, recalcula el horario con las **últimas 6 semanas** y revisa qué fue
+raro. Publica en `https://datos.basuragdl.tocaltepetl.org/horarios/`:
+
+- **`horarios.json`**: un renglón por cuadro de ~80 m y ruta en `puntos`, con
+  las columnas de `columnas`: `i`, `j` (centro = `i × celda_lat`,
+  `j × celda_lng`), `ruta`, `ini` y `fin` (minutos desde medianoche: entre qué
+  horas suele pasar en día normal), `nivel` (0 estable, rango de 45 min o
+  menos; 1 varía, hasta 2 h; 2 varía mucho) e `ini_cargado`, `fin_cargado`
+  (lo mismo en lunes o días después de feriado). En `dias`, qué días se usaron
+  y cuáles se excluyeron y por qué.
+- **`anomalias.json`**: por día, su tipo (`normal`, `cargado` = después de un
+  día sin servicio, `sin_servicio`), la carga (duración de las rutas contra un
+  día normal), y lo raro: rutas que no salieron, que empezaron tarde
+  (`inicio_tarde`, y `muchas_rutas_tarde` si son 10 o más), que fueron por
+  otras calles (`calles_nuevas`; `cambio_de_ruta` si pasa 3 días seguidos), que
+  cubrieron poco, que pasaron tarde, días cargados sin explicación y días con
+  datos incompletos. Las de nivel `alta` llegan como aviso por ntfy.
+- **`dias/AAAA-MM-DD.json.gz`**: el resumen de cada día del que sale todo: por
+  ruta, inicio, fin y la primera hora en que pasó **recolectando** (a menos de
+  15 km/h) por cada cuadro.
+
+**Cómo se calcula.** Un punto se publica si se vio al menos 4 días normales. El
+rango deja fuera el 20 % de días más tempranos y el 20 % más tardíos, y se
+redondea a 5 min hacia afuera. No cuentan los días con datos incompletos, los
+días normales con rutas 7 % más largas de lo común (como el miércoles después
+de un puente) ni las rutas que ese día empezaron 1.5 h tarde: eso va a
+`anomalias.json`. Si una ruta cambia, el horario se acomoda solo en unas
+semanas, y mientras tanto el detector lo avisa. Los parámetros están al inicio
+de `horarios/horarios.py`.
+
+**Recalcular en tu compu** (solo Python 3, sin dependencias):
+```sh
+cp horarios/semilla/*.json.gz /tmp/res/      # días previos al grabador
+python3 horarios/horarios.py sincronizar --resumenes /tmp/res
+python3 horarios/horarios.py actualizar --resumenes /tmp/res --salida /tmp/sal
+python3 -m unittest discover -s horarios      # pruebas
+```
+
 ## Publicación
 Sitio: **https://basuragdl.tocaltepetl.org** (Cloudflare Workers, solo archivos
 estáticos). Se publica desde GitHub Actions al liberar una versión; los
@@ -148,6 +193,10 @@ Grabador: **https://datos.basuragdl.tocaltepetl.org/index.html** (Cloudflare Wor
 un Durable Object y R2; código en `grabador/`, configuración aparte en
 `grabador/wrangler.jsonc`). Lo despliega el workflow «Grabador» al hacer merge
 de cambios en `grabador/`. Pruebas: `cd grabador && npm test`.
+
+Horario aproximado: lo publica cada noche el workflow «Horarios» en
+`datos.basuragdl.tocaltepetl.org/horarios/` (ver arriba). No requiere desplegar
+el sitio: la página lo baja de ahí.
 
 ## Decisiones
 Ver [`docs/decisiones.md`](docs/decisiones.md).
